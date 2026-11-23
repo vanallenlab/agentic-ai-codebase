@@ -79,6 +79,37 @@ logging:
   required: false               # if true, a wandb init failure aborts the run
 ```
 
+### Tool execution isolation
+
+Tools, the Python REPL and the datasets live in a separate **worker** process; the
+harness (model loop, validation, logging, checkpoints) never runs agent code.
+If the worker crashes, is OOM-killed or hangs past the hard timeout, the harness
+kills it, starts a new one from the latest per-step checkpoints and reports the
+failure to the model as the result of that call — the run continues.
+
+```yaml
+execution:
+  mode: subprocess            # subprocess (default) | container | inprocess (debug only, no isolation)
+  hard_timeout_grace_s: 120   # worker is killed if a call exceeds tool_timeout_s + this
+  memory_limit_gb: null       # subprocess mode: address-space cap (MemoryError instead of OOM kill)
+  container:                  # used when mode: container
+    runtime: docker           # docker | podman
+    image: ghcr.io/vanallenlab/agentic-sc-runtime:v2   # lab runtime image (see onboarding/README.md)
+    memory: 48g               # cgroup memory limit (no swap)
+    cpus: 8
+    network: true             # false = no network (literature/database tools need it)
+    gpus: null                # e.g. "all"
+```
+
+In container mode the repo is mounted read-only, input data read-only, and only the
+run's output directory is writable; paths are identical inside and outside the
+container, and files are written as your user. Pull the image first:
+
+```bash
+docker login ghcr.io          # GitHub classic token with read:packages
+docker pull ghcr.io/vanallenlab/agentic-sc-runtime:v2
+```
+
 Every run writes, as it goes: `agent.log`, `steps.jsonl` (every tool execution in full) and `conversation.jsonl` (every request/response; images referenced by file path). These are also streamed to W&B. SIGTERM/SIGHUP trigger a clean shutdown with all outputs saved, and the process exits non-zero if the run ended early.
 
 ## Layout

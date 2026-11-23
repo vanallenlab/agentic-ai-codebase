@@ -4,8 +4,9 @@ Harness-side handle on the tool worker.
 Modes (config `execution.mode`):
   subprocess (default)  worker = `python -m src.worker_main` in its own session.
                         A crash / OOM kill / hang in a tool kills only the worker.
-  container             worker runs in a docker/podman container built from the
-                        repo's Containerfile: separate memory/CPU limits (cgroups),
+  container             worker runs in a docker/podman container (default image:
+                        the lab runtime image, ghcr.io/vanallenlab/agentic-sc-runtime:v2):
+                        separate memory/CPU limits (cgroups),
                         read-only inputs and code, writable output dir only,
                         optional network isolation.
   inprocess             old behaviour: tools run inside the harness process
@@ -30,6 +31,9 @@ from typing import Optional
 from src.harness_guard import DATA_SLOTS
 from src.logging_utils import log, logger
 from src.worker_protocol import WorkerDied, WorkerTimeout, read_frame, write_frame
+
+# Lab runtime image (conda env on PATH); see onboarding/README.md
+DEFAULT_IMAGE = "ghcr.io/vanallenlab/agentic-sc-runtime:v2"
 
 DEFAULT_ENV_PASSTHROUGH = (
     "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT",
@@ -146,7 +150,7 @@ class WorkerClient(_BaseClient):
         cmd += ["-v", f"{self.output_dir}:{self.output_dir}:rw", "-w", str(self.output_dir)]
         for p in self._input_paths():
             cmd += ["-v", f"{p}:{p}:ro"]
-        cmd += [c.get("image", "m3a-worker:latest"), "python", worker_script]
+        cmd += [c.get("image", DEFAULT_IMAGE), "python", worker_script]
         return cmd
 
     def _input_paths(self) -> list[str]:
