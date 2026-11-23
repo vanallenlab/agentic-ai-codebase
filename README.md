@@ -6,14 +6,32 @@ M3A enforces constraints across five core dimensions to enable rigorous tracing 
 
 We applied M3A to evaluate a Claude Opus 4.6 (Feb 6, 2026) based agent across multi-step, multi-omic reasoning tasks with predefined evaluation endpoints spanning molecular profiling data from multiple cancer types.
 
+## Environment
+
+The environment is managed with [uv](https://docs.astral.sh/uv/) and fully pinned:
+`.python-version` fixes the interpreter (a uv-managed CPython 3.10.19 build),
+`pyproject.toml` pins direct dependencies, and `uv.lock` pins every transitive
+package with hashes. Every machine that runs `uv sync --frozen` gets the same
+environment.
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh   # once per machine (uv >= 0.13.9)
+uv sync --frozen                                  # creates .venv exactly from uv.lock
+uv sync --frozen --extra scvi                     # optional: scvi-tools based tools
+```
+
+Do not run `uv lock` / `uv add` unless you intend to change the environment; commit
+the updated `uv.lock` when you do. System libraries (glibc, GPU driver) are outside
+uv's scope.
+
 ## Quick start
 
 ```bash
 # HAI experiment (interactive)
-python run_agent.py --config config/hai/jyates_eac.yaml --name your-name
+uv run run_agent.py --config config/hai/jyates_eac.yaml --name your-name
 
 # HTAN experiment (batch)
-python run_agent_htan.py --config config/htan/opus-4-6/brca/celltype_annotation.yaml
+uv run run_agent_htan.py --config config/htan/opus-4-6/brca/celltype_annotation.yaml
 ```
 
 Interactive mode: add `--interactive`. List available tools: `--list-tools`.
