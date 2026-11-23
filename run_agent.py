@@ -10,8 +10,6 @@ from datetime import datetime
 from pathlib import Path
 import numpy as np
 import pandas as pd
-import scanpy as sc
-import snapatac2 as snap
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -32,7 +30,7 @@ from src.agent_state import AgentState
 from src.tool_executor import execute_tool_call, parse_response
 from src.agent_control import set_agent_state
 from src.notebook_generator import generate_verification_notebook
-from src.tools_external.support_tools import ReadOnlyAnnDataProxy
+from src.worker_client import make_runtime_client, WorkerFatal
 
 
 def init_services(config: dict, task: str, user_name: str = None):
@@ -168,46 +166,12 @@ def handle_interactive(state, outputs) -> tuple[str, any]:
             return "continue", outputs
 
 
-def _save_final_outputs(state, output_dir):
-    """Write final data objects (atomic) and close the backed dataset. Never raises."""
-    for attr, fname, label in (("adata_rna", "result_rna.h5ad", "RNA"),
-                               ("adata_atac", "result_atac.h5ad", "ATAC"),
-                               ("adata_combined", "result_combined.h5ad", "combined")):
-        obj = getattr(state, attr, None)
-        if obj is None:
-            continue
-        out_file = output_dir / fname
-        tmp = out_file.with_name(out_file.name + ".tmp")
-        try:
-            obj.write_h5ad(tmp)
-            os.replace(tmp, out_file)
-            log(f"💾 Saved {label} data: {out_file}")
-        except BaseException as e:  # noqa: BLE001 - incl. PyO3 panics
-            if isinstance(e, KeyboardInterrupt):
-                raise
-            log(f"⚠️ Could not save {label} data: {type(e).__name__}: {e}")
-
-    if state.adata_atac_backed is not None:
-        try:
-            closer = getattr(state.adata_atac_backed, "harness_close", None) or state.adata_atac_backed.close
-            closer()
-            log("💾 Closed scATAC backed dataset (read-only, not saved)")
-        except BaseException as e:  # noqa: BLE001
-            if isinstance(e, KeyboardInterrupt):
-                raise
-            log(f"⚠️ Could not close backed dataset: {e}")
-
-
 def _set_seeds(seed):
     if seed is None:
         return
     random.seed(seed)
     np.random.seed(seed)
-    try:
-        sc.settings.seed = seed  # not used by all scanpy versions; harmless
-    except Exception:
-        pass
-    log(f"🎲 Random seed: {seed} (python, numpy)")
+    log(f"🎲 Random seed: {seed} (python, numpy; also applied in the tool worker)")
 
 
 def run_agent(config_path: str, user_name: str = None):
@@ -228,7 +192,8 @@ def run_agent(config_path: str, user_name: str = None):
         llm.retry_total_seconds / llm.max_images_per_request
 
     Returns:
-        dict: {"rna": adata_rna, "atac": adata_atac, "atac_backed": adata_atac_backed, "combined": adata_combined}.
+        dict: {"end_reason": str, "output_dir": str}. The data lives in the tool
+        worker; final objects are written to output_dir/result_*.h5ad.
     """
     install_signal_handlers()  # SIGTERM/SIGHUP -> clean shutdown with saves
 
@@ -331,44 +296,38 @@ def run_agent(config_path: str, user_name: str = None):
     set_agent_state(state)
     save_live_files(output_dir)
 
-    # Load data (both can be loaded simultaneously for multimodal analysis)
-    if scrna_data_path:
-        state.adata_rna = sc.read_h5ad(scrna_data_path)
-        log(f"✓ Loaded scRNA data from {scrna_data_path}: {state.adata_rna.n_obs} cells, {state.adata_rna.n_vars} genes")
-        if logger.wandb_run:
-            wandb.config.update({"n_cells_rna": state.adata_rna.n_obs, "n_genes_rna": state.adata_rna.n_vars})
-
-    if scatac_data_path:
-        state.adata_atac = sc.read_h5ad(scatac_data_path)
-        log(f"✓ Loaded scATAC data from {scatac_data_path}: {state.adata_atac.n_obs} cells, {state.adata_atac.n_vars} peaks")
-        if logger.wandb_run:
-            wandb.config.update({"n_cells_atac": state.adata_atac.n_obs, "n_peaks_atac": state.adata_atac.n_vars})
-
-    if scatac_snap_path:
-        raw_backed = snap.read_dataset(scatac_snap_path, mode="r")
-        state.adata_atac_backed = ReadOnlyAnnDataProxy(raw_backed)
-        del raw_backed  # free memory
-        log(f"✓ Loaded scATAC backed dataset from {scatac_snap_path}: {state.adata_atac_backed.n_obs} cells, {state.adata_atac_backed.n_vars} peaks (read-only proxy)")
-        if logger.wandb_run:
-            wandb.config.update({"n_cells_atac_backed": state.adata_atac_backed.n_obs, "n_peaks_atac_backed": state.adata_atac_backed.n_vars})
-
-    if data_dir:
-        data_dir_path = Path(data_dir)
-        if not data_dir_path.exists():
-            raise FileNotFoundError(f"data_dir not found: {data_dir_path}")
-        state.data_dir = data_dir_path
-        data_dir_contents = sorted(p.name for p in data_dir_path.iterdir())
-        log(f"✓ Data directory: {data_dir_path} ({len(data_dir_contents)} items: {data_dir_contents})")
-
-    if cnmf_usage_path:
-        state.cnmf_usage_df = pd.read_csv(cnmf_usage_path, index_col=0)
-        log(f"✓ Loaded cNMF usage matrix from {cnmf_usage_path}: {state.cnmf_usage_df.shape}")
-    if cnmf_spectra_scores_path:
-        state.cnmf_spectra_scores_df = pd.read_csv(cnmf_spectra_scores_path, index_col=0)
-        log(f"✓ Loaded cNMF spectra scores from {cnmf_spectra_scores_path}: {state.cnmf_spectra_scores_df.shape}")
-    if cnmf_top_genes_path:
-        state.cnmf_top_genes_df = pd.read_csv(cnmf_top_genes_path, index_col=0)
-        log(f"✓ Loaded cNMF top genes from {cnmf_top_genes_path}: {state.cnmf_top_genes_df.shape}")
+    # Start the tool worker; it loads the data and owns it for the whole run.
+    # The harness process never holds the datasets (unless execution.mode=inprocess).
+    def _abs(p):
+        return str(Path(p).resolve()) if p else None
+    init_payload = {
+        "output_dir": str(output_dir),
+        "data": {k: v for k, v in {
+            "scrna_data_path": _abs(scrna_data_path),
+            "scatac_data_path": _abs(scatac_data_path),
+            "scatac_snap_path": _abs(scatac_snap_path),
+            "data_dir": _abs(data_dir),
+            "cnmf_usage_path": _abs(cnmf_usage_path),
+            "cnmf_spectra_scores_path": _abs(cnmf_spectra_scores_path),
+            "cnmf_top_genes_path": _abs(cnmf_top_genes_path),
+        }.items() if v},
+        "literature_blacklist": literature_blacklist,
+        "tool_timeout_s": state.tool_timeout_s,
+        "track_data_changes": state.track_data_changes,
+        "seed": config.get("seed", 0),
+    }
+    state.runtime = make_runtime_client(config, init_payload, output_dir,
+                                        repo_dir=Path(__file__).resolve().parent,
+                                        tool_timeout_s=state.tool_timeout_s)
+    data_info = state.runtime.start()
+    log(f"✓ Tool worker ready ({(config.get('execution') or {}).get('mode', 'subprocess')}): {data_info}")
+    if logger.wandb_run:
+        try:
+            flat = {f"n_obs_{k}": v["n_obs"] for k, v in data_info.items()}
+            flat.update({f"n_vars_{k}": v["n_vars"] for k, v in data_info.items()})
+            wandb.config.update(flat)
+        except Exception as e:
+            log(f"⚠️ wandb config update failed: {e}")
 
     # Load tools
     tools = load_tools(tool_category, provider=state.client.provider)
@@ -560,16 +519,16 @@ def run_agent(config_path: str, user_name: str = None):
                 outputs.extend(execute_tool_call(tc, state, output_dir, token_info))
 
             # Checkpoint any data this step modified (atomic; failures only logged)
-            if checkpoint_data and state.dirty_slots:
-                results = checkpoint_state(state, output_dir, sorted(state.dirty_slots))
+            if checkpoint_data:
+                results = state.runtime.checkpoint()
                 for attr, res in results.items():
-                    if res.startswith("ERROR"):
+                    if str(res).startswith("ERROR") or attr == "_error":
                         log(f"   ⚠️ Checkpoint of {attr} failed: {res}")
                     else:
                         log(f"   💾 Checkpointed {attr} -> {res}")
-                state.recorder.event("checkpoint", step=state.step_count, results=results)
-                state.dirty_slots = {a for a, r in results.items() if r.startswith("ERROR")}
-
+                if results:
+                    state.recorder.event("checkpoint", step=state.step_count, results=results)
+            
             # Interactive mode: prompt user after execution
             if interactive:
                 action, data = handle_interactive(state, outputs)
@@ -582,6 +541,10 @@ def run_agent(config_path: str, user_name: str = None):
             messages = outputs
             log("")
 
+    except WorkerFatal as e:
+        stop_reason_for_run = "worker_fatal"
+        log(f"\n🛑 Tool worker could not be restarted: {e}")
+        _safe_event(state, "run_stopped", reason=stop_reason_for_run, error=str(e))
     except (KeyboardInterrupt, TerminationRequested) as e:
         stop_reason_for_run = f"interrupted:{type(e).__name__}"
         log(f"\n🛑 Run interrupted ({type(e).__name__}: {e}); saving outputs...")
@@ -597,8 +560,7 @@ def run_agent(config_path: str, user_name: str = None):
 
     finally:
         if not entered_main_loop:
-            return {"rna": state.adata_rna, "atac": state.adata_atac,
-                    "atac_backed": state.adata_atac_backed, "combined": state.adata_combined}
+            return {"end_reason": "not_started", "output_dir": str(output_dir)}
 
         # ==================================================================
         # Finalize (always runs, even on crash / SIGTERM). Every stage is
@@ -616,23 +578,24 @@ def run_agent(config_path: str, user_name: str = None):
             except Exception:
                 pass
 
-        _save_final_outputs(state, output_dir)
-
+        adata_info = {}
+        if state.runtime is not None:
+            try:
+                fin = state.runtime.finalize()
+                for attr, path in (fin.get("saved") or {}).items():
+                    log(f"💾 Saved {attr}: {path}")
+                for attr, err in (fin.get("errors") or {}).items():
+                    log(f"⚠️ Could not save {attr}: {err}")
+                adata_info = fin.get("info") or {}
+            except Exception as e:
+                log(f"⚠️ Final save failed: {type(e).__name__}: {e}")
+            try:
+                state.runtime.shutdown()
+            except Exception as e:
+                log(f"⚠️ Worker shutdown failed: {e}")
+        
         # Generate verification notebook
         try:
-            adata_info = {}
-            if state.adata_rna is not None:
-                adata_info["rna"] = {"n_obs": state.adata_rna.n_obs, "n_vars": state.adata_rna.n_vars}
-            if state.adata_atac is not None:
-                adata_info["atac"] = {"n_obs": state.adata_atac.n_obs, "n_vars": state.adata_atac.n_vars}
-            if state.adata_atac_backed is not None:
-                try:
-                    adata_info["atac_backed"] = {"n_obs": state.adata_atac_backed.n_obs, "n_vars": state.adata_atac_backed.n_vars}
-                except BaseException:
-                    pass  # backed object may be closed / invalid at this point
-            if state.adata_combined is not None:
-                adata_info["combined"] = {"n_obs": state.adata_combined.n_obs, "n_vars": state.adata_combined.n_vars}
-
             notebook_path = generate_verification_notebook(
                 output_dir=output_dir,
                 task=task,
@@ -656,9 +619,7 @@ def run_agent(config_path: str, user_name: str = None):
         except Exception as e:
             print(f"⚠️ wandb finalize failed: {e}")
 
-    return {"rna": state.adata_rna, "atac": state.adata_atac,
-            "atac_backed": state.adata_atac_backed, "combined": state.adata_combined,
-            "end_reason": stop_reason_for_run}
+    return {"end_reason": stop_reason_for_run, "output_dir": str(output_dir)}
 
 
 def _safe_event(state, kind, **fields):

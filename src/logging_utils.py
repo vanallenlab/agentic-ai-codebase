@@ -37,6 +37,13 @@ class AgentLogger:
         if self._wandb_run and wandb_log:
             wandb.log(wandb_log)
     
+    def write_file_only(self, text: str):
+        """Append text to the log file without printing (e.g. log lines that a
+        worker process already printed to the console)."""
+        if self._log_file and text:
+            self._log_file.write(text if text.endswith("\n") else text + "\n")
+            self._log_file.flush()
+
     def close(self):
         """Close the log file if open."""
         if self._log_file:

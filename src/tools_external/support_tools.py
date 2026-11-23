@@ -30,6 +30,9 @@ _persistent_namespace = {'sc': sc, 'np': np, 'pd': pd, 'plt': plt, 'sns': sns, '
 _repl_saved_plots: list[str] = []
 _repl_saved_fignums: set[int] = set()
 _repl_plot_counter = 0
+# Set by the worker on restart (e.g. "w1_") so plot files from a restarted
+# worker never overwrite files written before the crash.
+_repl_file_prefix = ""
 
 _IMAGE_EXTENSIONS = frozenset({'.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.webp'})
 
@@ -76,9 +79,9 @@ def _save_remaining_figures(output_dir):
         title = _get_figure_title(fig)
         if title:
             safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in title)[:50]
-            filename = f"{safe}_{_repl_plot_counter}.png"
+            filename = f"{_repl_file_prefix}{safe}_{_repl_plot_counter}.png"
         else:
-            filename = f"repl_figure_{_repl_plot_counter}.png"
+            filename = f"{_repl_file_prefix}repl_figure_{_repl_plot_counter}.png"
 
         if output_dir:
             filepath = os.path.join(str(output_dir), filename)
@@ -382,9 +385,9 @@ def _apply_matplotlib_patches(output_dir=None):
                 title = _get_figure_title(fig)
                 if title:
                     safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in title)[:50]
-                    filename = f"{safe}_{_repl_plot_counter}.png"
+                    filename = f"{_repl_file_prefix}{safe}_{_repl_plot_counter}.png"
                 else:
-                    filename = f"repl_show_{_repl_plot_counter}.png"
+                    filename = f"{_repl_file_prefix}repl_show_{_repl_plot_counter}.png"
 
                 if output_dir:
                     filepath = os.path.join(str(output_dir), filename)
@@ -441,7 +444,7 @@ def _apply_plotly_patches(output_dir=None):
         """Save plotly figure to disk on fig.show() (no browser in agent context)."""
         global _repl_plot_counter
         _repl_plot_counter += 1
-        filename = f"plotly_figure_{_repl_plot_counter}.png"
+        filename = f"{_repl_file_prefix}plotly_figure_{_repl_plot_counter}.png"
         filepath = _redirect_path(filename)
         try:
             original_write_image(fig, filepath)

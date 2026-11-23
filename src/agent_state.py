@@ -140,6 +140,7 @@ class AgentState:
     image_max_edge: int = 1568                        # downscale plots sent to the model (disk copy untouched)
     dirty_slots: set = field(default_factory=set)     # data slots modified since last checkpoint
     recorder: Any = None                              # RunRecorder (append-only JSONL logs)
+    runtime: Any = None                               # tool runtime client (worker_client)
     last_turn_text: str = ""                          # agent's own text in the latest turn
     last_turn_thinking: str = ""                      # agent's own thinking in the latest turn
     
