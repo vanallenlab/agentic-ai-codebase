@@ -40,56 +40,95 @@ def log_tokens(token_info: dict, tracker: "TokenTracker"):
             "tokens/cumulative_images_sent": tracker.total_images_sent,
         })
     
-    wandb.log(metrics)
+    try:
+        wandb.log(metrics)
+    except Exception as e:
+        log(f"⚠️ wandb log_tokens failed: {e}")
 
 
 _execution_rows = []  # Simple list of rows
 
-# All columns - including flattened reasoning fields
+# All columns - including flattened reasoning fields.
+# NOTE: the first 18 columns keep their original names/order (downstream analysis
+# reads tables/execution.csv by column name); new columns are appended at the end.
+# Values are logged in FULL (no truncation).
 _COLUMNS = [
     "step", "exec_id", "tool", "args", "success", "error",
     "input_tokens", "output_tokens", "reasoning_tokens", "completion_tokens", "saturation_pct",
-    # Flattened reasoning fields
+    # Flattened reasoning fields (post-hoc, produced by the observability hook)
     "intent", "alternatives_considered", "reason_for_choice", "assumptions", "expected_outcome",
     # Flattened retry reasoning fields  
     "error_diagnosis", "parameters_changed",
+    # --- added by harness hardening ---
+    "result",            # full tool result / model response text (as the model saw it)
+    "model_text",        # the agent's own text in the turn that issued this call
+    "model_thinking",    # the agent's own thinking in that turn (if returned)
+    "stop_reason",
+    "data_changes",      # changes detected in shared data objects by this call
+    "duration_s",
+    "full_output_path",  # set when the tool output was too large and saved to disk
+    "reasoning_source",  # "posthoc_hook" for the intent/... fields above
 ]
 
+
+def _s(v) -> str:
+    return "" if v is None else str(v)
+
+
 def log_execution(entry: dict):
-    """Log execution to wandb table at each step."""
+    """Log execution to wandb table at each step (full values, no truncation)."""
     if not logger.wandb_run:
         return
-    
-    # Get reasoning dict (may be empty)
-    reasoning = entry.get("reasoning", {}) or {}
-    
-    # Append row with ALL columns including flattened reasoning
-    _execution_rows.append([
-        entry.get("step", 0),
-        entry.get("exec_id", 0),
-        entry.get("name", "unknown"),
-        str(entry.get("args_preview", ""))[:200],
-        entry.get("success", True),
-        str(entry.get("error", ""))[:100] if entry.get("error") else "",
-        entry.get("input_tokens", 0),
-        entry.get("output_tokens", 0),
-        entry.get("reasoning_tokens", 0),
-        entry.get("completion_tokens", 0),
-        entry.get("saturation_pct", 0),
-        # Flattened reasoning fields
-        str(reasoning.get("intent", ""))[:300],
-        str(reasoning.get("alternatives_considered", ""))[:300],
-        str(reasoning.get("reason_for_choice", ""))[:300],
-        str(reasoning.get("assumptions", ""))[:300],
-        str(reasoning.get("expected_outcome", ""))[:300],
-        # Flattened retry reasoning fields
-        str(reasoning.get("error_diagnosis", ""))[:300],
-        str(reasoning.get("parameters_changed", ""))[:300],
-    ])
-    
-    # Create fresh table with all rows and log
-    table = wandb.Table(columns=_COLUMNS, data=_execution_rows)
-    wandb.log({"execution": table})
+    try:
+        reasoning = entry.get("reasoning", {}) or {}
+        _execution_rows.append([
+            entry.get("step", 0),
+            entry.get("exec_id", 0),
+            entry.get("name", "unknown"),
+            _s(entry.get("args_preview", "")),
+            entry.get("success", True),
+            _s(entry.get("error", "")),
+            entry.get("input_tokens", 0),
+            entry.get("output_tokens", 0),
+            entry.get("reasoning_tokens", 0),
+            entry.get("completion_tokens", 0),
+            entry.get("saturation_pct", 0),
+            _s(reasoning.get("intent", "")),
+            _s(reasoning.get("alternatives_considered", "")),
+            _s(reasoning.get("reason_for_choice", "")),
+            _s(reasoning.get("assumptions", "")),
+            _s(reasoning.get("expected_outcome", "")),
+            _s(reasoning.get("error_diagnosis", "")),
+            _s(reasoning.get("parameters_changed", "")),
+            _s(entry.get("result", "")),
+            _s(entry.get("model_text", "")),
+            _s(entry.get("model_thinking", "")),
+            _s(entry.get("stop_reason", "")),
+            _s(entry.get("data_changes", "")),
+            entry.get("duration_s", None),
+            _s(entry.get("full_output_path", "")),
+            "posthoc_hook" if reasoning else "",
+        ])
+        # Re-log the full table each step (survives crashes; downstream reads the
+        # latest table version as the complete record).
+        table = wandb.Table(columns=_COLUMNS, data=_execution_rows, allow_mixed_types=True)
+        wandb.log({"execution": table})
+    except Exception as e:  # telemetry must never kill the run
+        log(f"⚠️ wandb log_execution failed: {e}")
+
+
+def save_live_files(output_dir, names=("conversation.jsonl", "steps.jsonl", "agent.log")):
+    """Stream append-only run logs to wandb as they grow (policy='live')."""
+    if not logger.wandb_run:
+        return
+    from pathlib import Path
+    for name in names:
+        try:
+            path = Path(output_dir) / name
+            path.touch(exist_ok=True)
+            wandb.save(str(path), base_path=str(output_dir), policy="live")
+        except Exception as e:
+            log(f"⚠️ wandb.save({name}) failed: {e}")
 
 
 def log_plot(plot_path: str, step: int):
@@ -98,8 +137,11 @@ def log_plot(plot_path: str, step: int):
         return
     from pathlib import Path
     plot_file = Path(plot_path)
-    if plot_file.exists():
-        wandb.log({f"plots/{plot_file.stem}": wandb.Image(str(plot_file))})
+    try:
+        if plot_file.exists():
+            wandb.log({f"plots/{plot_file.stem}": wandb.Image(str(plot_file))})
+    except Exception as e:  # telemetry must never kill the run
+        log(f"⚠️ wandb log_plot failed: {e}")
 
 
 def finalize(output_dir, step_count: int, plot_count: int,
@@ -172,8 +214,8 @@ def _log_interaction_table(interaction_history: list):
         table.add_data(
             h.get("step", 0),
             h.get("type", "unknown"),
-            h.get("content", "")[:500],
-            h.get("response", h.get("reason", ""))[:500],
+            h.get("content", "") or "",
+            h.get("response", h.get("reason", "")) or "",
             h.get("affects_context", False),
         )
     wandb.log({"user_interactions": table})
@@ -205,9 +247,19 @@ def _log_artifacts(output_dir, config_path: str = None, task_path: str = None):
     if log_file.exists():
         artifact.add_file(str(log_file))
     
-    # Plots
-    for plot_file in output_dir.glob("plot_*.png"):
-        artifact.add_file(str(plot_file))
+    # Plots (all images the run produced, not only plot_*.png)
+    for pattern in ("*.png", "*.jpg", "*.jpeg", "*.svg", "*.pdf", "*.html"):
+        for plot_file in output_dir.glob(pattern):
+            artifact.add_file(str(plot_file))
+
+    # Full append-only transcripts and oversized tool outputs
+    for name in ("conversation.jsonl", "steps.jsonl"):
+        f = output_dir / name
+        if f.exists():
+            artifact.add_file(str(f))
+    tool_outputs = output_dir / "tool_outputs"
+    if tool_outputs.is_dir():
+        artifact.add_dir(str(tool_outputs), name="tool_outputs")
     
     # Notebooks
     for nb_file in output_dir.glob("*.ipynb"):
@@ -255,6 +307,7 @@ def print_summary(step_count: int, execution_history: list, tracker: "TokenTrack
     if failures:
         log(f"\n### Errors Encountered")
         for f in failures:
-            log(f"   Step {f['step']}: {f['name']} - {f.get('error', 'unknown')[:80]}")
+            first_line = (str(f.get('error') or 'unknown').strip().splitlines() or ['unknown'])[-1]
+            log(f"   Step {f['step']}: {f['name']} - {first_line[:200]}")
     
     return total_calls, len(failures)

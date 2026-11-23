@@ -132,6 +132,17 @@ class AgentState:
     # Literature blacklist: exclude source study (e.g. paper that produced the dataset) from search/fetch
     literature_blacklist: Optional[dict] = None  # From config: urls, dois, pmids, title_contains
     
+    # Harness robustness settings / bookkeeping
+    tool_schemas: dict = field(default_factory=dict)  # tool name -> JSON schema offered to the model
+    tool_timeout_s: Optional[float] = None            # per tool call wall-clock limit (None = none)
+    tool_output_max_chars: Optional[int] = 100_000    # larger outputs: head+tail to model, full to disk
+    track_data_changes: bool = True                   # fingerprint shared data around each call
+    image_max_edge: int = 1568                        # downscale plots sent to the model (disk copy untouched)
+    dirty_slots: set = field(default_factory=set)     # data slots modified since last checkpoint
+    recorder: Any = None                              # RunRecorder (append-only JSONL logs)
+    last_turn_text: str = ""                          # agent's own text in the latest turn
+    last_turn_thinking: str = ""                      # agent's own thinking in the latest turn
+    
     # History tracking - UNIFIED: each entry has tool info + token info together
     execution_history: list = field(default_factory=list)
     interaction_history: list = field(default_factory=list)
@@ -162,8 +173,13 @@ class AgentState:
     
     def add_execution(self, name: str, args: dict, args_preview: str, intent: str,
                       reasoning_data: dict, success: bool, result_str: str,
-                      token_info: dict = None, exec_id: int = None, error: str = None):
-        """Record a complete execution entry (tool + tokens together)."""
+                      token_info: dict = None, exec_id: int = None, error: str = None,
+                      **extra):
+        """Record a complete execution entry (tool + tokens together).
+
+        `result_str` is stored in full under "result". Extra keyword fields
+        (model_text, model_thinking, data_changes, duration_s, ...) are merged in.
+        """
         self.conversation_log.append(f"[TOOL CALL]: {name}({args_preview})")
         status = "✅" if success else "❌"
         self.conversation_log.append(f"[TOOL RESULT]: {status} {result_str[:200]}")
@@ -185,8 +201,8 @@ class AgentState:
             "reasoning_tokens": token_info.get("reasoning_tokens", 0) if token_info else 0,
             "completion_tokens": token_info.get("completion_tokens", 0) if token_info else 0,
             "saturation_pct": token_info.get("saturation_pct", 0) if token_info else 0,
-            # Context
-            "conversation": "\n".join(self.conversation_log)
+            "result": result_str,
+            **extra,
         }
         self.execution_history.append(record)
     
@@ -209,7 +225,7 @@ class AgentState:
             "step": self.step_count,
             "exec_id": None,
             "name": "USER_FEEDBACK",
-            "args_preview": text[:100],
+            "args_preview": text,
             "success": True,
             "error": "",
             "input_tokens": 0, "output_tokens": 0, "reasoning_tokens": 0,
@@ -222,7 +238,7 @@ class AgentState:
             "step": self.step_count,
             "type": "question",
             "content": question,
-            "response": answer[:500] if answer else "",
+            "response": answer or "",
             "affects_context": False,
         })
         # Also add to execution_history for unified logging
@@ -230,27 +246,32 @@ class AgentState:
             "step": self.step_count,
             "exec_id": None,
             "name": "USER_QUESTION",
-            "args_preview": question[:100],
+            "args_preview": question,
             "success": True,
-            "error": answer[:200] if answer else "",  # Store answer in error field for visibility
+            "error": answer or "",  # Store answer in error field for visibility
+            "result": answer or "",
             "input_tokens": 0, "output_tokens": 0, "reasoning_tokens": 0,
             "completion_tokens": 0, "saturation_pct": 0,
         })
     
-    def add_model_response(self, text: str, token_info: dict = None):
+    def add_model_response(self, text: str, token_info: dict = None, stop_reason: str = None,
+                           name: str = "MODEL_RESPONSE", success: bool = True):
         """Record a final model text response (no tool call).
         
         This captures the model's concluding message so it appears
         in the wandb execution table alongside tool calls.
         """
+        text = text or ""
         self.conversation_log.append(f"[MODEL RESPONSE]: {text[:500]}")
         self.execution_history.append({
             "step": self.step_count,
             "exec_id": None,
-            "name": "MODEL_RESPONSE",
-            "args_preview": text[:200],
-            "success": True,
-            "error": "",
+            "name": name,
+            "args_preview": text,
+            "result": text,
+            "stop_reason": stop_reason or "",
+            "success": success,
+            "error": "" if success else f"stop_reason={stop_reason}",
             "input_tokens": token_info.get("input_tokens", 0) if token_info else 0,
             "output_tokens": token_info.get("output_tokens", 0) if token_info else 0,
             "reasoning_tokens": token_info.get("reasoning_tokens", 0) if token_info else 0,

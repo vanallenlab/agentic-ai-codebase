@@ -65,26 +65,61 @@ def _build_json_schema(tool: dict) -> dict:
     Converts our internal parameter format (required_parameters / optional_parameters
     with Python type names) into JSON Schema.
     """
-    type_map = {
-        "str": "string", "int": "integer", "float": "number", "bool": "boolean",
-        "list": "array", "dict": "object", "tuple": "array",
+    import re
+
+    scalar_map = {
+        "str": "string", "string": "string", "path": "string",
+        "int": "integer", "integer": "integer",
+        "float": "number", "number": "number",
+        "bool": "boolean", "boolean": "boolean",
+        "dict": "object", "mapping": "object", "object": "object",
     }
-    
-    def get_type(t: str) -> str:
+    array_heads = ("list", "tuple", "collection", "sequence", "array", "numpy.ndarray", "iterable", "range")
+
+    def _item_type(text: str) -> str:
+        text = text.lower()
+        if "int" in text:
+            return "integer"
+        if "float" in text or "number" in text:
+            return "number"
+        if "bool" in text:
+            return "boolean"
+        if "dict" in text:
+            return "object"
+        return "string"
+
+    def part_schema(part: str):
+        """Schema for one alternative of a Python-ish type string, or None if
+        it can't be expressed in JSON (e.g. Axes, callable)."""
+        p = part.strip()
+        low = p.lower()
+        if not p or low in ("none", "nonetype", "null"):
+            return None
+        if low in scalar_map:
+            return {"type": scalar_map[low]}
+        if any(low.startswith(h) for h in array_heads) or low.startswith("array-like"):
+            m = re.search(r"\[(.*)\]|\bof\s+(.+)$", p)
+            inner = (m.group(1) or m.group(2)) if m else ""
+            return {"type": "array", "items": {"type": _item_type(inner) if inner else "string"}}
+        return None
+
+    def get_schema(t: str) -> dict:
         t = str(t)
-        if "|" in t or " or " in t:
-            return "string"
-        return type_map.get(t.split()[0], "string")
+        parts = re.split(r"\s+or\s+|\s*\|\s*", t)
+        schemas = []
+        for part in parts:
+            s = part_schema(part)
+            if s is not None and s not in schemas:
+                schemas.append(s)
+        if not schemas:
+            return {"type": "string"}
+        if len(schemas) == 1:
+            return schemas[0]
+        return {"anyOf": schemas}
 
     def build_prop(param: dict) -> dict:
-        t = get_type(param["type"])
-        prop = {"type": t, "description": param["description"]}
-        if t == "array":
-            prop["items"] = {"type": "string"}  # Default
-            if "int" in param["type"]:
-                prop["items"] = {"type": "integer"}
-            elif "float" in param["type"]:
-                prop["items"] = {"type": "number"}
+        prop = dict(get_schema(param["type"]))
+        prop["description"] = param["description"]
         return prop
 
     properties = {}

@@ -41,6 +41,28 @@ logging:
 
 **Env:** set `ANTHROPIC_API_KEY`. For W&B logging also set `WANDB_API_KEY`.
 
+### Harness robustness options (all optional)
+
+```yaml
+tool_timeout_s: 7200            # wall-clock limit per tool call (0/null = none)
+tool_output_max_chars: 100000   # larger outputs: head+tail to the model, full text in output/tool_outputs/
+track_data_changes: true        # detect changes to shared data per call; warn the model if a FAILED call modified data
+checkpoint_data: true           # after each step, write modified data to output/checkpoints/ (atomic)
+seed: 0                         # python/numpy seed (null = don't seed)
+image_max_edge: 1568            # plots sent to the model are downscaled to the model's native resolution (disk copies untouched)
+llm:
+  max_tokens: 16384             # per-response output cap (default by reasoning_effort: 8192/16384/32000)
+  thinking: default             # default | adaptive | disabled  (default: adaptive only when reasoning_effort=high)
+  effort: null                  # Anthropic output_config.effort (null = API default)
+  max_retries: 8                # SDK retries for 429/5xx
+  retry_total_seconds: 1800     # additional backoff window for transient API errors
+  max_images_per_request: 600   # stop cleanly (everything saved) instead of sending a request the API rejects
+logging:
+  required: false               # if true, a wandb init failure aborts the run
+```
+
+Every run writes, as it goes: `agent.log`, `steps.jsonl` (every tool execution in full) and `conversation.jsonl` (every request/response; images referenced by file path). These are also streamed to W&B. SIGTERM/SIGHUP trigger a clean shutdown with all outputs saved, and the process exits non-zero if the run ended early.
+
 ## Layout
 
 - `run_agent.py` — main entry point (HAI / interactive experiments)

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import contextlib
 import importlib
 import inspect
+import linecache
 import os
 import subprocess
 import sys
+import traceback
+import warnings
 from io import StringIO
 
 import matplotlib.figure as mpl_figure
@@ -72,7 +76,7 @@ def _save_remaining_figures(output_dir):
         title = _get_figure_title(fig)
         if title:
             safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in title)[:50]
-            filename = f"{safe}.png"
+            filename = f"{safe}_{_repl_plot_counter}.png"
         else:
             filename = f"repl_figure_{_repl_plot_counter}.png"
 
@@ -133,17 +137,45 @@ class _ReadOnlyMappingProxy:
 
 class ReadOnlyAnnDataProxy:
     """Proxy that allows reads on a snapatac2 backed dataset but raises a clean
-    Python error on any mutation attempt, preventing Rust panics / SIGABRT."""
+    Python error on any mutation attempt, preventing Rust panics / SIGABRT.
+
+    The wrapped object is stored under a name-mangled slot and attribute access
+    to private names is refused, so agent code cannot casually reach the raw
+    handle (``proxy._backed``). This is a guard rail, not a security boundary:
+    in-process Python code can always get around it (true isolation needs the
+    out-of-process worker). Use ``harness_close()`` from harness code to close.
+    """
 
     _MAPPING_ATTRS = frozenset({"obs", "var", "obsm", "varm", "obsp", "varp", "uns", "layers"})
+    # Methods that mutate or invalidate the shared backed file in place.
+    _BLOCKED_METHODS = frozenset({"close", "open"})
 
     def __init__(self, backed):
-        object.__setattr__(self, "_backed", backed)
+        object.__setattr__(self, "_ReadOnlyAnnDataProxy__backed", backed)
 
     def __getattr__(self, name):
-        val = getattr(self._backed, name)
+        if name.startswith("_"):
+            raise AttributeError(
+                f"adata_atac_backed is READ-ONLY; private attribute '{name}' is not accessible."
+            )
+        backed = object.__getattribute__(self, "_ReadOnlyAnnDataProxy__backed")
+        if name in self._BLOCKED_METHODS:
+            raise AttributeError(
+                f"adata_atac_backed is READ-ONLY and shared; '.{name}()' is not allowed."
+            )
+        val = getattr(backed, name)
         if name in self._MAPPING_ATTRS:
             return _ReadOnlyMappingProxy(val)
+        if name == "subset":
+            def _subset_copy_only(*args, **kwargs):
+                if not kwargs.get("out"):
+                    raise TypeError(
+                        "adata_atac_backed is READ-ONLY; in-place subset is not allowed. "
+                        "Pass out='<path>.h5ad' to write the subset to a new file, "
+                        "or use adata_atac_backed.to_memory() and subset the copy."
+                    )
+                return val(*args, **kwargs)
+            return _subset_copy_only
         return val
 
     def __setattr__(self, name, value):
@@ -152,8 +184,20 @@ class ReadOnlyAnnDataProxy:
             "Use the in-memory adata_atac instead, or create a copy."
         )
 
+    def __delattr__(self, name):
+        raise AttributeError(f"adata_atac_backed is READ-ONLY. Cannot delete '.{name}'.")
+
+    def harness_unwrap(self):
+        """Harness-only: return the raw backed object (for snapatac2 functions
+        that need the native type)."""
+        return object.__getattribute__(self, "_ReadOnlyAnnDataProxy__backed")
+
+    def harness_close(self):
+        """Harness-only: close the underlying file at the end of a run."""
+        self.harness_unwrap().close()
+
     def __repr__(self):
-        return f"ReadOnlyProxy({self._backed!r})"
+        return f"ReadOnlyProxy({self.harness_unwrap()!r})"
 
 
 # ---------------------------------------------------------------------------
@@ -177,14 +221,11 @@ def run_python_repl(command: str, adata_rna=None, adata_atac=None,
       top_genes_df — cNMF top genes per program, if loaded
     Variables defined in one execution persist across subsequent calls."""
 
-    global _repl_saved_plots, _repl_saved_fignums
+    global _repl_saved_plots, _repl_saved_fignums, _repl_exec_counter
     _repl_saved_plots = []
     _repl_saved_fignums = set()
 
-    command = command.strip("```").strip()
-
-    old_stdout = sys.stdout
-    sys.stdout = mystdout = StringIO()
+    command = _strip_code_fences(command)
 
     if adata_rna is not None:
         _persistent_namespace['adata_rna'] = adata_rna
@@ -204,24 +245,93 @@ def run_python_repl(command: str, adata_rna=None, adata_atac=None,
         _persistent_namespace['top_genes_df'] = top_genes_df
 
     if output_dir is not None:
-        sc.settings.figdir = str(output_dir)
+        output_dir = os.path.abspath(str(output_dir))
+        sc.settings.figdir = output_dir
+        _persistent_namespace['output_dir'] = output_dir
 
+    _repl_exec_counter += 1
+    filename = f"<agent_code_{_repl_exec_counter}>"
+    # Register source so tracebacks show the offending lines
+    linecache.cache[filename] = (len(command), None, command.splitlines(True), filename)
+
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    old_cwd = os.getcwd()
+    old_argv = sys.argv
+    buf = StringIO()  # stdout and stderr interleaved, in order (warnings included)
+    error = None
     try:
+        sys.stdout = sys.stderr = buf
+        sys.argv = ["agent_code"]  # stop argparse in agent code from reading the harness CLI args
         _apply_plot_patches(output_dir)
-        exec(command, _persistent_namespace)
-        output = mystdout.getvalue()
-    except BaseException as e:
-        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+        with warnings.catch_warnings():
+            warnings.simplefilter("default")
+            code_obj = compile(command, filename, "exec")
+            exec(code_obj, _persistent_namespace)
+    except SystemExit as e:
+        # Agent code (or a library it called) tried to exit the process: report
+        # it as a failed call instead of terminating the whole run.
+        error = (f"SystemExit({e.code!r}) raised by the code. Exiting the interpreter is "
+                 f"not allowed in run_python_repl; the call was aborted.")
+    except BaseException as e:  # noqa: BLE001
+        from src.harness_guard import TerminationRequested, ToolTimeout
+        if isinstance(e, (KeyboardInterrupt, TerminationRequested)):
             raise
-        output = f"Error: {type(e).__name__}: {str(e)}"
+        if isinstance(e, ToolTimeout):
+            error = str(e)
+        else:
+            error = _format_agent_traceback(e, filename)
     finally:
-        sys.stdout = old_stdout
+        sys.stdout, sys.stderr = old_stdout, old_stderr
+        sys.argv = old_argv
+        if os.getcwd() != old_cwd:
+            # Agent changed the working directory; restore it so relative paths
+            # used by the harness keep resolving to the right place.
+            with contextlib.suppress(Exception):
+                os.chdir(old_cwd)
+                buf.write(f"\n[harness] Note: os.chdir() in agent code was reverted; "
+                          f"working directory is {old_cwd}\n")
 
     # Save any new matplotlib figures the code left open (not already saved/shown)
     # and close them so _save_new_figures in tool_executor doesn't double-count.
     _save_remaining_figures(output_dir)
 
+    output = buf.getvalue()
+    if error is not None:
+        partial = output if output.strip() else "(no output before the error)"
+        raise ReplExecutionError(f"{error}\n\n--- output before the error ---\n{partial}")
     return output
+
+
+class ReplExecutionError(Exception):
+    """Agent code in run_python_repl raised. Message carries the traceback and
+    any output printed before the failure. The executor marks the call failed."""
+
+
+_repl_exec_counter = 0
+
+
+def _strip_code_fences(command: str) -> str:
+    """Remove a surrounding markdown code fence (```python ... ```), if present."""
+    s = command.strip()
+    if s.startswith("```"):
+        first_nl = s.find("\n")
+        s = s[first_nl + 1:] if first_nl != -1 else ""
+        if s.rstrip().endswith("```"):
+            s = s.rstrip()[:-3]
+    return s.strip("\n")
+
+
+def _format_agent_traceback(e: BaseException, filename: str) -> str:
+    """Traceback starting at the agent's code (harness frames dropped)."""
+    tb = e.__traceback__
+    while tb is not None and tb.tb_frame.f_code.co_filename != filename:
+        tb = tb.tb_next
+    lines = traceback.format_exception(type(e), e, tb if tb is not None else e.__traceback__)
+    text = "".join(lines).replace(filename, "agent_code")
+    # Very deep library tracebacks: keep the start (agent line) and the end (root cause)
+    if len(text) > 8000:
+        text = text[:3000] + "\n  ... (traceback frames omitted) ...\n" + text[-4500:]
+    return text
 
 
 def _apply_plot_patches(output_dir=None):
@@ -272,7 +382,7 @@ def _apply_matplotlib_patches(output_dir=None):
                 title = _get_figure_title(fig)
                 if title:
                     safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in title)[:50]
-                    filename = f"{safe}.png"
+                    filename = f"{safe}_{_repl_plot_counter}.png"
                 else:
                     filename = f"repl_show_{_repl_plot_counter}.png"
 
@@ -394,6 +504,29 @@ def run_terminal(
         Combined output: stdout and stderr, plus exit code. On timeout or
         failure, includes an error message.
     """
+    # --- Guard rails (harness integrity / reproducibility) ---
+    # 1. Packages already installed in the running environment are pinned via a
+    #    pip constraints file, so `pip install X` can add new packages but cannot
+    #    upgrade/downgrade numpy, scanpy, anndata, ... underneath the live process.
+    # 2. Uninstalling packages is refused for the same reason.
+    lowered = " ".join(command.lower().split())
+    if "pip uninstall" in lowered or "pip3 uninstall" in lowered or "conda remove" in lowered \
+            or "conda uninstall" in lowered or "mamba remove" in lowered:
+        raise RuntimeError(
+            "Uninstalling packages is not allowed during a run: it would change the "
+            "environment the running analysis depends on."
+        )
+    try:
+        timeout = int(timeout)
+    except (TypeError, ValueError):
+        timeout = 120
+    timeout = max(1, min(timeout, 3600))
+
+    env = os.environ.copy()
+    constraints = _pip_constraints_file()
+    if constraints:
+        env["PIP_CONSTRAINT"] = constraints
+
     try:
         result = subprocess.run(
             command,
@@ -402,22 +535,52 @@ def run_terminal(
             timeout=timeout,
             capture_output=True,
             text=True,
+            env=env,
+            stdin=subprocess.DEVNULL,
         )
-        out = (result.stdout or "").strip()
-        err = (result.stderr or "").strip()
-        lines = []
-        if out:
-            lines.append("stdout:")
-            lines.append(out)
-        if err:
-            lines.append("stderr:")
-            lines.append(err)
-        lines.append(f"exit_code: {result.returncode}")
-        return "\n".join(lines)
     except subprocess.TimeoutExpired:
-        return f"Error: Command timed out after {timeout} seconds."
-    except Exception as e:
-        return f"Error: {type(e).__name__}: {e}"
+        raise TimeoutError(f"Command timed out after {timeout} seconds: {command}")
+
+    out = (result.stdout or "").strip()
+    err = (result.stderr or "").strip()
+    lines = []
+    if out:
+        lines.append("stdout:")
+        lines.append(out)
+    if err:
+        lines.append("stderr:")
+        lines.append(err)
+    lines.append(f"exit_code: {result.returncode}")
+    text = "\n".join(lines)
+    if result.returncode != 0:
+        raise RuntimeError(f"Command failed (exit code {result.returncode}).\n{text}")
+    return text
+
+
+_PIP_CONSTRAINTS_PATH = None
+
+
+def _pip_constraints_file() -> str | None:
+    """Write (once per process) a pip constraints file pinning every installed
+    distribution to its current version. Returns its path, or None on failure."""
+    global _PIP_CONSTRAINTS_PATH
+    if _PIP_CONSTRAINTS_PATH and os.path.exists(_PIP_CONSTRAINTS_PATH):
+        return _PIP_CONSTRAINTS_PATH
+    try:
+        import importlib.metadata as md
+        import tempfile
+        pins = {}
+        for dist in md.distributions():
+            name = (dist.metadata.get("Name") or "").strip()
+            if name and dist.version:
+                pins[name.lower()] = f"{name}=={dist.version}"
+        fd, path = tempfile.mkstemp(prefix="agent_pip_constraints_", suffix=".txt")
+        with os.fdopen(fd, "w") as f:
+            f.write("\n".join(sorted(pins.values())) + "\n")
+        _PIP_CONSTRAINTS_PATH = path
+        return path
+    except Exception:
+        return None
 
 
 def download_synapse_data(
