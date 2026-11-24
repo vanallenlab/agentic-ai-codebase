@@ -60,11 +60,17 @@ print('leakage guard OK:', c['llm']['model'], '| container', c['execution']['con
 
 # --- 6. Start the run in tmux, so it survives an SSH disconnect ----------------
 # Model and settings come from the config (claude-opus-4-6, reasoning_effort medium).
+# Keys are read from ~/.bashrc inside the session, never put on a command line (visible in ps).
+# Put `export NCBI_API_KEY=...` / `export WANDB_API_KEY=...` in ~/.bashrc to have them picked up.
 mkdir -p logs
 LOG=logs/gbm_celltype_$(date +%Y%m%d_%H%M%S).log
-tmux new-session -d -s gbm_celltype \
-  "cd $REPO && ANTHROPIC_API_KEY='$ANTHROPIC_API_KEY' ${NCBI_API_KEY:+NCBI_API_KEY='$NCBI_API_KEY'} \
-   ${WANDB_MODE:+WANDB_MODE=$WANDB_MODE} uv run run_agent_htan.py --config $CONFIG 2>&1 | tee $LOG"
+tmux new-session -d -s gbm_celltype "bash -c '
+  cd $REPO
+  eval \"\$(grep -E \"^export (ANTHROPIC_API_KEY|NCBI_API_KEY|WANDB_API_KEY)=\" ~/.bashrc)\"
+  [ -n \"\${WANDB_API_KEY:-}\" ] || export WANDB_MODE=disabled
+  export PATH=\"\$HOME/.local/bin:\$PATH\"
+  uv run run_agent_htan.py --config $CONFIG 2>&1 | tee $LOG
+  echo \"run finished (exit \${PIPESTATUS[0]}); press Enter to close\"; read'"
 echo "Started. Log: $LOG"
 
 # --- 7. Watch it ----------------------------------------------------------------
