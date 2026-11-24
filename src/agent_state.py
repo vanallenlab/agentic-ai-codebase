@@ -23,6 +23,10 @@ class TokenTracker:
     cumulative_completion: int = 0
     cumulative_image_tokens: int = 0  # Estimated image tokens sent
     cumulative_cached_tokens: int = 0  # Cached/reused tokens (if API reports)
+    cumulative_cache_write_tokens: int = 0
+    cumulative_uncached_input: int = 0   # input billed at the full rate
+    cumulative_cost_usd: float = 0.0     # estimate from src.config.MODEL_PRICES (0 if model unknown)
+    model: str = ""
     peak_saturation_pct: float = 0.0
     total_images_sent: int = 0  # Count of images sent to model
     
@@ -43,8 +47,14 @@ class TokenTracker:
         # Extract input token details (cached tokens, etc.) if available
         input_details = getattr(usage, 'input_tokens_details', None)
         cached_tokens = 0
+        cache_write_tokens = 0
+        uncached_tokens = input_tokens
         if input_details:
             cached_tokens = getattr(input_details, 'cached_tokens', 0) or 0
+            cache_write_tokens = getattr(input_details, 'cache_write_tokens', 0) or 0
+            uncached_tokens = getattr(input_details, 'uncached_tokens', None)
+            if uncached_tokens is None:  # OpenAI: cached is a subset of input
+                uncached_tokens = input_tokens - cached_tokens
         
         # Extract reasoning tokens (for reasoning models like o4-mini)
         output_details = getattr(usage, 'output_tokens_details', None)
@@ -65,6 +75,11 @@ class TokenTracker:
         self.cumulative_completion += completion_tokens
         self.cumulative_image_tokens += image_tokens_estimate
         self.cumulative_cached_tokens += cached_tokens
+        self.cumulative_cache_write_tokens += cache_write_tokens
+        self.cumulative_uncached_input += uncached_tokens
+        from src.config import estimate_cost_usd
+        cost = estimate_cost_usd(self.model, uncached_tokens, cache_write_tokens, cached_tokens, output_tokens)
+        self.cumulative_cost_usd += cost
         self.total_images_sent += images_sent
         
         # Context saturation is based on input tokens (which includes images)
@@ -79,6 +94,10 @@ class TokenTracker:
             "total_tokens": total_tokens,
             "saturation_pct": saturation_pct,
             "cached_tokens": cached_tokens,
+            "cache_write_tokens": cache_write_tokens,
+            "uncached_tokens": uncached_tokens,
+            "cost_usd": cost,
+            "cumulative_cost_usd": self.cumulative_cost_usd,
             "image_tokens_estimate": image_tokens_estimate,
             "images_sent": images_sent,
         }
@@ -99,6 +118,8 @@ class TokenTracker:
         cached_info = ""
         if token_info.get("cached_tokens", 0) > 0:
             cached_info = f" | 💾 {token_info['cached_tokens']:,} cached"
+        if token_info.get("cumulative_cost_usd"):
+            cached_info += f" | 💲{token_info['cumulative_cost_usd']:.2f}"
         
         return f"📏 Tokens: {token_info['input_tokens']:,} in / {token_info['output_tokens']:,} out{reasoning_info}{image_info}{cached_info} | Context: [{saturation_bar}] {saturation_pct:.1f}%{saturation_warning}"
 
@@ -137,6 +158,7 @@ class AgentState:
     tool_timeout_s: Optional[float] = None            # per tool call wall-clock limit (None = none)
     tool_output_max_chars: Optional[int] = 100_000    # larger outputs: head+tail to model, full to disk
     track_data_changes: bool = True                   # fingerprint shared data around each call
+    send_images: bool = True                          # False = text-only ablation (plots saved, never shown)
     image_max_edge: int = 1568                        # downscale plots sent to the model (disk copy untouched)
     dirty_slots: set = field(default_factory=set)     # data slots modified since last checkpoint
     recorder: Any = None                              # RunRecorder (append-only JSONL logs)
@@ -154,7 +176,7 @@ class AgentState:
     
     def __post_init__(self):
         self.conversation_log = [f"[USER]: {self.task}"]
-        self.tokens = TokenTracker(self.context_limit)
+        self.tokens = TokenTracker(self.context_limit, model=self.model or "")
     
     def get_next_exec_id(self) -> int:
         """Get the next monotonic execution ID."""

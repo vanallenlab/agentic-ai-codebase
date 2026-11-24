@@ -14,8 +14,10 @@ calls here.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import random
+import re
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -34,6 +36,49 @@ from src.harness_guard import (  # noqa: E402
 from src.logging_utils import log  # noqa: E402
 from src.tool_metadata import get_output_path_params, is_plotting_tool  # noqa: E402
 from src.tool_registry import execute_tool  # noqa: E402
+
+# Tools that run agent-written code
+AGENT_CODE_TOOLS = frozenset({"run_python_repl", "run_terminal"})
+
+# Post-hoc audit of agent code (flags only; nothing is blocked by these).
+_AUDIT_PATTERNS = {
+    "image_read": re.compile(
+        r"Image\.open|imread|imageio|\bcv2\b|tesseract|easyocr|\bocr\b|base64|read_bytes"
+        r"|open\([^)\n]*\.(?:png|jpe?g|gif|bmp|tiff?|svg|pdf)['\"]", re.I),
+    "llm_access": re.compile(
+        r"\banthropic\b|\bopenai\b|api\.anthropic\.com|api\.openai\.com|_API_KEY|/environ\b"
+        r"|\bclaude-|\bgpt-\d", re.I),
+}
+
+
+def audit_agent_code(name: str, args: dict) -> list[str]:
+    code = str(args.get("command", "")) if name in AGENT_CODE_TOOLS else ""
+    return [flag for flag, rx in _AUDIT_PATTERNS.items() if code and rx.search(code)]
+
+
+_IMAGE_READ_BLOCKED = ("Reading image files is disabled in this run: plots are saved to disk, but this is a "
+                       "text-only configuration and their contents are not available to you.")
+
+
+@contextlib.contextmanager
+def _block_image_reads(active: bool):
+    """Text-only runs: make the standard image readers fail inside agent code."""
+    if not active:
+        yield
+        return
+    import matplotlib.image as mpimg
+    from PIL import Image
+
+    def _blocked(*_a, **_k):
+        raise PermissionError(_IMAGE_READ_BLOCKED)
+
+    saved = (Image.open, mpimg.imread)
+    Image.open, mpimg.imread = _blocked, _blocked
+    try:
+        yield
+    finally:
+        Image.open, mpimg.imread = saved
+
 
 # Tools that accept literature_blacklist (injected from config to exclude source study)
 LITERATURE_TOOLS = frozenset({
@@ -72,6 +117,8 @@ class ToolRuntime:
         self.tool_timeout_s: Optional[float] = None
         self.track_data_changes = True
         self.rollback_on_failure = True
+        self.block_image_reads = False
+        self._secrets: dict[str, str] = {}
         self.generation = 0
         # attr -> on-disk copy of the slot as of the last checkpoint (None = slot was empty)
         self.restore_sources: dict[str, Optional[str]] = {}
@@ -86,6 +133,8 @@ class ToolRuntime:
         self.tool_timeout_s = req.get("tool_timeout_s") or None
         self.track_data_changes = req.get("track_data_changes", True)
         self.rollback_on_failure = req.get("rollback_on_failure", True)
+        self.block_image_reads = not req.get("send_images", True)
+        self._secrets = dict(req.get("secrets") or {})
         self.generation = int(req.get("generation", 0))
         self.state.literature_blacklist = req.get("literature_blacklist")
 
@@ -181,8 +230,13 @@ class ToolRuntime:
         result, error_text, notes, saved_plots = None, None, [], []
 
         # PyO3 converts most Rust panics to PanicException (BaseException), caught here.
+        agent_code = name in AGENT_CODE_TOOLS
+        audit_flags = audit_agent_code(name, args)
+        if audit_flags:
+            log(f"   🔎 Audit flags: {audit_flags}")
         try:
-            with time_limit(self.tool_timeout_s):
+            with time_limit(self.tool_timeout_s), self._tool_env(agent_code), \
+                    _block_image_reads(self.block_image_reads and name == "run_python_repl"):
                 result = execute_tool(name, **exec_args)
             if _looks_like_error_string(result):
                 error_text = str(result)
@@ -269,9 +323,28 @@ class ToolRuntime:
             "data_changes": (format_changes(data_changes) + (" [rolled back]" if rolled_back else "")
                              if data_changes else ""),
             "rolled_back": rolled_back,
+            "audit_flags": audit_flags,
             "args_preview": {k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v))
                              for k, v in args_preview.items()},
         }
+
+    @contextlib.contextmanager
+    def _tool_env(self, agent_code: bool):
+        """LLM credentials are in os.environ only while a harness tool runs,
+        never while agent-written code runs."""
+        if agent_code or not self._secrets:
+            yield
+            return
+        saved = {k: os.environ.get(k) for k in self._secrets}
+        os.environ.update(self._secrets)
+        try:
+            yield
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
 
     # ------------------------------------------------------------ persistence
     def checkpoint(self, _req: dict = None) -> dict:

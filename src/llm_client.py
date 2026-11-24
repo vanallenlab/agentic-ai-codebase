@@ -49,6 +49,17 @@ _PRE_ADAPTIVE_MARKERS = ("claude-3", "claude-4-", "opus-4-0", "sonnet-4-0", "opu
                          "opus-4-5", "sonnet-4-5", "haiku-4-5", "opus-4-2025", "sonnet-4-2025")
 
 
+# Models on which thinking is on by default (omitting `thinking` runs adaptive)
+_THINKING_DEFAULT_ON_MARKERS = ("opus-5", "sonnet-5", "haiku-5", "fable", "mythos")
+# ...and on which `{"type": "disabled"}` is rejected outright
+_THINKING_NOT_DISABLEABLE_MARKERS = ("opus-5-5", "sonnet-5-5", "fable", "mythos")
+
+
+def _thinking_default_on(model: str) -> bool:
+    m = (model or "").lower()
+    return any(x in m for x in _THINKING_DEFAULT_ON_MARKERS)
+
+
 def _supports_adaptive_thinking(model: str) -> bool:
     m = (model or "").lower()
     return not any(x in m for x in _PRE_ADAPTIVE_MARKERS)
@@ -59,6 +70,7 @@ class LLMClient:
 
     # Overridable from config (see create_llm_client_from_config)
     max_images_per_request: int = 600
+    prompt_caching: bool = True   # Anthropic: cache the conversation prefix (billing only; outputs unchanged)
     retry_total_seconds: float = 1800.0  # extra patience on 429/5xx/overloaded beyond SDK retries
 
     def __init__(self, provider: str, model: str, **kwargs):
@@ -66,6 +78,7 @@ class LLMClient:
         self.model = model
         self.max_tokens_override = kwargs.pop("max_tokens", None)
         self.thinking_override = kwargs.pop("thinking", None)   # "adaptive" | "disabled" | None
+        self.thinking_display = kwargs.pop("thinking_display", None)  # "summarized" | "omitted" | None
         self.effort_override = kwargs.pop("effort", None)       # output_config.effort, or None
         self.max_retries = int(kwargs.pop("max_retries", 8))
 
@@ -320,10 +333,23 @@ class LLMClient:
         # continuations when thinking is on.
         max_tokens_map = {"low": 8192, "medium": 16384, "high": 32000}
         max_tokens = int(self.max_tokens_override or max_tokens_map.get(reasoning_effort, 16384))
+        messages = self._conversation_history
+        if self.prompt_caching and not _isolated_mode and messages:
+            # One breakpoint on the last block of the newest turn: each request
+            # reads the previous turn's prefix (tools + system + history) from
+            # cache and writes the new suffix. Applied to a per-request copy so
+            # breakpoints never accumulate in the stored history (max 4).
+            last = messages[-1]
+            content = last["content"]
+            if isinstance(content, str):
+                content = [{"type": "text", "text": content}]
+            if content and isinstance(content[-1], dict):
+                content = list(content[:-1]) + [{**content[-1], "cache_control": {"type": "ephemeral"}}]
+                messages = list(messages[:-1]) + [{**last, "content": content}]
         kwargs = {
             "model": self.model,
             "max_tokens": max_tokens,
-            "messages": self._conversation_history,
+            "messages": messages,
         }
         thinking = self._thinking_config(reasoning_effort, _isolated_mode)
         if thinking is not None:
@@ -378,13 +404,19 @@ class LLMClient:
         # --- Step 5: Convert to unified output format ---
         unified_output = self._convert_response_to_unified(response)
         
+        # With caching, usage.input_tokens is only the UNCACHED part. Report the
+        # full prompt size as input_tokens (context saturation, comparability with
+        # earlier runs) and the cache split separately (cost).
+        cache_read = getattr(response.usage, 'cache_read_input_tokens', 0) or 0
+        cache_write = getattr(response.usage, 'cache_creation_input_tokens', 0) or 0
+        uncached = response.usage.input_tokens or 0
         usage = UsageInfo(
-            input_tokens=response.usage.input_tokens,
+            input_tokens=uncached + cache_read + cache_write,
             output_tokens=response.usage.output_tokens,
         )
-        cache_read = getattr(response.usage, 'cache_read_input_tokens', 0) or 0
-        if cache_read:
-            usage.input_tokens_details = type('Details', (), {'cached_tokens': cache_read})()
+        usage.input_tokens_details = type('Details', (), {
+            'cached_tokens': cache_read, 'cache_write_tokens': cache_write,
+            'uncached_tokens': uncached})()
         
         return LLMResponse(
             id=response.id, provider="anthropic",
@@ -400,17 +432,30 @@ class LLMClient:
         adaptive thinking (budget_tokens is deprecated on 4.6 and rejected on
         later models); older models keep the fixed budget. `llm.thinking` in the
         config overrides this: "adaptive" | "disabled" | "default".
+
+        Models with thinking on by default (Opus 5.x etc.) always think;
+        `llm.thinking_display: summarized` makes them return a readable summary
+        (the default display returns empty thinking text), which is what the
+        step telemetry (`model_thinking`) records.
         """
         override = (self.thinking_override or "default").lower()
         if isolated:
             return None  # side-channel calls (hook, user questions) stay cheap
+        m = (self.model or "").lower()
         if override == "disabled":
+            if any(x in m for x in _THINKING_NOT_DISABLEABLE_MARKERS):
+                raise ValueError(f"llm.thinking: disabled is not supported by {self.model} (thinking is "
+                                 "always on; use llm.effort to control it)")
             return {"type": "disabled"}
-        want = override == "adaptive" or (override == "default" and reasoning_effort == "high")
+        want = (override == "adaptive" or (override == "default" and reasoning_effort == "high")
+                or _thinking_default_on(m))
         if not want:
             return None
         if _supports_adaptive_thinking(self.model):
-            return {"type": "adaptive"}
+            cfg = {"type": "adaptive"}
+            if self.thinking_display:
+                cfg["display"] = self.thinking_display
+            return cfg
         return {"type": "enabled", "budget_tokens": 10000}
 
     def _convert_incoming_messages(self, messages: list) -> list[tuple[str, list[dict]]]:
@@ -670,6 +715,7 @@ def create_llm_client_from_config(config: dict) -> tuple[LLMClient, str]:
         "max_tokens": llm_config.get("max_tokens"),
         "thinking": llm_config.get("thinking"),
         "effort": llm_config.get("effort"),
+        "thinking_display": llm_config.get("thinking_display"),
         "max_retries": llm_config.get("max_retries", 8),
     }
 
@@ -694,5 +740,7 @@ def create_llm_client_from_config(config: dict) -> tuple[LLMClient, str]:
         client.retry_total_seconds = float(llm_config["retry_total_seconds"])
     if llm_config.get("max_images_per_request") is not None:
         client.max_images_per_request = int(llm_config["max_images_per_request"])
+    if llm_config.get("prompt_caching") is not None:
+        client.prompt_caching = bool(llm_config["prompt_caching"])
 
     return client, model

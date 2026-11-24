@@ -70,13 +70,17 @@ rollback_on_failure: true       # a FAILED call's changes to shared data are und
                                 # checkpoint) and the model is told; needs the two options above
 seed: 0                         # python/numpy seed (null = don't seed)
 image_max_edge: 1568            # plots sent to the model are downscaled to the model's native resolution (disk copies untouched)
+send_images: true               # false = text-only ablation: plots are saved to disk but never shown to the model,
+                                # and PIL / matplotlib image readers raise inside the REPL
 llm:
   max_tokens: 16384             # per-response output cap (default by reasoning_effort: 8192/16384/32000)
   thinking: default             # default | adaptive | disabled  (default: adaptive only when reasoning_effort=high)
   effort: null                  # Anthropic output_config.effort (null = API default)
+  thinking_display: null        # summarized = readable thinking in model_thinking (Opus 5.x returns it empty by default)
   max_retries: 8                # SDK retries for 429/5xx
   retry_total_seconds: 1800     # additional backoff window for transient API errors
   max_images_per_request: 600   # stop cleanly (everything saved) instead of sending a request the API rejects
+  prompt_caching: true          # Anthropic: cache the conversation prefix (cuts input cost ~80%; outputs unchanged)
 logging:
   required: false               # if true, a wandb init failure aborts the run
 ```
@@ -101,7 +105,12 @@ execution:
     cpus: 8
     network: true             # false = no network (literature/database tools need it)
     gpus: null                # e.g. "all"
+  agent_code_llm_keys: false  # LLM API keys are never visible to agent-written code (REPL/terminal);
+                              # harness tools that need them (literature search) get them per call
 ```
+
+Agent code is audited: each step in `steps.jsonl` carries `audit_flags`, `image_read` (code that opens or
+decodes image files) and/or `llm_access` (code that references an LLM API or API keys). Flags never block a call.
 
 In container mode the repo is mounted read-only, input data read-only, and only the
 run's output directory is writable; paths are identical inside and outside the

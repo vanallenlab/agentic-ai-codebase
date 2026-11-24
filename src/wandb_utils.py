@@ -28,6 +28,9 @@ def log_tokens(token_info: dict, tracker: "TokenTracker"):
         "context/saturation_pct": token_info["saturation_pct"],
         "context/peak_saturation_pct": tracker.peak_saturation_pct,
         "context/limit": tracker.context_limit,
+        "tokens/cached": token_info.get("cached_tokens", 0),
+        "tokens/cache_write": token_info.get("cache_write_tokens", 0),
+        "cost/cumulative_usd": token_info.get("cumulative_cost_usd", 0.0),
     }
     
     # Add image metrics if images were sent
@@ -35,7 +38,6 @@ def log_tokens(token_info: dict, tracker: "TokenTracker"):
         metrics.update({
             "tokens/image_estimate": token_info.get("image_tokens_estimate", 0),
             "tokens/images_sent": token_info.get("images_sent", 0),
-            "tokens/cached": token_info.get("cached_tokens", 0),
             "tokens/cumulative_image_estimate": tracker.cumulative_image_tokens,
             "tokens/cumulative_images_sent": tracker.total_images_sent,
         })
@@ -175,6 +177,10 @@ def finalize(output_dir, step_count: int, plot_count: int,
         "tokens/total_output": tracker.cumulative_output,
         "tokens/total_reasoning": tracker.cumulative_reasoning,
         "tokens/total_consumed": tracker.cumulative_input + tracker.cumulative_output,
+        "tokens/total_cache_read": tracker.cumulative_cached_tokens,
+        "tokens/total_cache_write": tracker.cumulative_cache_write_tokens,
+        "tokens/total_uncached_input": tracker.cumulative_uncached_input,
+        "cost/total_usd_estimate": tracker.cumulative_cost_usd,
         # Context
         "context/peak_saturation_pct": tracker.peak_saturation_pct,
         "context/limit": tracker.context_limit,

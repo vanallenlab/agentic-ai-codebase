@@ -171,7 +171,11 @@ def execute_tool_call(tc, state, output_dir, token_info=None):
     if success and plot_paths:
         plot_info = ", ".join(f"📊 {p}" for p in plot_paths)
         body = f"{body}\n{plot_info}" if body else plot_info
-    notes = resp.get("notes") or []
+    notes = list(resp.get("notes") or [])
+    send_images = getattr(state, "send_images", True)
+    if plot_paths and not send_images:
+        notes.append("[harness] Plots are saved to disk but images are not shown to you in this run "
+                     "(text-only configuration).")
     if notes:
         body = (body + "\n\n" if body else "") + "\n".join(notes)
     shaped, full_output_path = shape_tool_output(
@@ -205,6 +209,7 @@ def execute_tool_call(tc, state, output_dir, token_info=None):
             plots=plot_paths,
             worker_restarted=bool(resp.get("worker_restarted")),
             rolled_back=bool(resp.get("rolled_back")),
+            audit_flags=resp.get("audit_flags") or [],
         )
     _safe(_record, what="execution record")
     if state.execution_history:
@@ -215,7 +220,7 @@ def execute_tool_call(tc, state, output_dir, token_info=None):
 
     # --- 6. Return function output + any generated images for vision ---
     outputs = [{"type": "function_call_output", "call_id": tc.call_id, "output": output}]
-    if plot_paths:
+    if plot_paths and send_images:
         image_content = [{
             "type": "input_text",
             "text": f"[GENERATED PLOTS]: The tool generated {len(plot_paths)} plot(s). Please analyze them:",

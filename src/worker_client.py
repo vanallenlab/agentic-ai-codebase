@@ -42,6 +42,13 @@ DEFAULT_ENV_PASSTHROUGH = (
 )
 
 
+# LLM credentials are never placed in the worker's environment: agent-written
+# code (REPL / terminal) must not be able to call an LLM, e.g. to have another
+# model look at a plot. Harness tools that need them (literature search) get
+# them in memory via the init request; see ToolRuntime._tool_env.
+LLM_SECRET_VARS = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_OPENAI_API_KEY")
+
+
 class WorkerFatal(Exception):
     """The worker could not be (re)started; the run cannot continue."""
 
@@ -106,8 +113,9 @@ class InProcessClient(_BaseClient):
 class WorkerClient(_BaseClient):
     def __init__(self, init_payload: dict, output_dir: Path, repo_dir: Path, mode: str = "subprocess",
                  tool_timeout_s=None, hard_timeout_grace_s: float = 120.0, container: dict = None,
-                 memory_limit_gb=None):
+                 memory_limit_gb=None, agent_code_llm_keys: bool = False):
         super().__init__(init_payload, output_dir, tool_timeout_s)
+        self.agent_code_llm_keys = bool(agent_code_llm_keys)
         self.repo_dir = Path(repo_dir).resolve()
         self.mode = mode
         self.grace = float(hard_timeout_grace_s)
@@ -133,6 +141,8 @@ class WorkerClient(_BaseClient):
         cmd += ["-e", "HOME=/tmp", "-e", "MPLCONFIGDIR=/tmp/matplotlib",
                 "-e", "NUMBA_CACHE_DIR=/tmp/numba", "-e", "PYTHONUNBUFFERED=1"]
         for name in c.get("env_passthrough", DEFAULT_ENV_PASSTHROUGH):
+            if name in LLM_SECRET_VARS and not self.agent_code_llm_keys:
+                continue
             if name in os.environ:
                 cmd += ["-e", name]  # value read from our env; never on the command line
         if c.get("memory"):
@@ -170,6 +180,9 @@ class WorkerClient(_BaseClient):
     def _spawn(self):
         cmd = self._command()
         env = os.environ.copy()
+        if not self.agent_code_llm_keys:
+            for name in LLM_SECRET_VARS:
+                env.pop(name, None)
         if self.mode == "subprocess" and self.memory_limit_gb:
             env["M3A_WORKER_MEMORY_LIMIT_GB"] = str(self.memory_limit_gb)
         printable = " ".join(shlex.quote(x) for x in cmd)
@@ -222,7 +235,8 @@ class WorkerClient(_BaseClient):
         try:
             self._spawn()
             payload = dict(self.init_payload, op="init", generation=self.generation,
-                           checkpoints=self._checkpoint_paths() if self.generation else {})
+                           checkpoints=self._checkpoint_paths() if self.generation else {},
+                           secrets={k: os.environ[k] for k in LLM_SECRET_VARS if os.environ.get(k)})
             resp = self._request(payload, timeout=None)
         except (WorkerDied, WorkerTimeout, OSError) as e:
             code = self.proc.poll() if self.proc else None
@@ -344,4 +358,5 @@ def make_runtime_client(config: dict, init_payload: dict, output_dir: Path, repo
         hard_timeout_grace_s=ex.get("hard_timeout_grace_s", 120),
         container=ex.get("container", {}),
         memory_limit_gb=ex.get("memory_limit_gb"),
+        agent_code_llm_keys=ex.get("agent_code_llm_keys", False),
     )

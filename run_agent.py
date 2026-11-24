@@ -188,6 +188,7 @@ def run_agent(config_path: str, user_name: str = None):
         track_data_changes: true      # detect/report changes to shared data per call
         checkpoint_data: true         # write modified data to output/checkpoints after each step
         rollback_on_failure: true     # a FAILED call's changes to shared data are undone (reloaded from the last checkpoint)
+        send_images: true             # false = text-only: plots are saved to disk but never shown to the model
         seed: 0                       # python/numpy seed; null = don't seed
         llm.max_tokens / llm.thinking / llm.effort / llm.max_retries /
         llm.retry_total_seconds / llm.max_images_per_request
@@ -293,6 +294,9 @@ def run_agent(config_path: str, user_name: str = None):
     state.tool_output_max_chars = config.get("tool_output_max_chars", DEFAULT_TOOL_OUTPUT_MAX_CHARS) or None
     state.track_data_changes = config.get("track_data_changes", True)
     state.image_max_edge = int(config.get("image_max_edge") or model_max_image_edge(model))
+    state.send_images = bool(config.get("send_images", True))
+    if not state.send_images:
+        log("🖼️ send_images: false - plots are saved but never shown to the model")
     state.recorder = RunRecorder(output_dir)
     set_agent_state(state)
     save_live_files(output_dir)
@@ -316,6 +320,7 @@ def run_agent(config_path: str, user_name: str = None):
         "tool_timeout_s": state.tool_timeout_s,
         "track_data_changes": state.track_data_changes,
         "rollback_on_failure": bool(config.get("rollback_on_failure", True)),
+        "send_images": bool(config.get("send_images", True)),
         "seed": config.get("seed", 0),
     }
     state.runtime = make_runtime_client(config, init_payload, output_dir,
