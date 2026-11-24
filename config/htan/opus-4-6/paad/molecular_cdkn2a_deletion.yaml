@@ -1,3 +1,4 @@
+extends: config/htan/leakage_guard.yaml
 task_file: tasks/htan/paad/molecular_cdkn2a_deletion.md
 scrna_data_path: data/datasets-mt/htan_datasets/results/scrna/PDAC/final_combined_adata_PDAC_with_cancertype_sitetype_celltype.h5ad
 scatac_data_path: data/datasets-mt/htan_datasets/results/scatac/PDAC/final_combined_adata_PDAC_with_cancertype_sitetype_celltype.h5ad

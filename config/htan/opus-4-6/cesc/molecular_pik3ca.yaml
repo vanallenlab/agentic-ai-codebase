@@ -1,3 +1,4 @@
+extends: config/htan/leakage_guard.yaml
 task_file: tasks/htan/cesc/molecular_pik3ca.md
 scrna_data_path: data/datasets-mt/htan_datasets/results/scrna/CESC/final_combined_adata_CESC_with_cancertype_sitetype_celltype.h5ad
 scatac_data_path: data/datasets-mt/htan_datasets/results/scatac/CESC/final_combined_adata_CESC_with_cancertype_sitetype_celltype.h5ad
