@@ -1,0 +1,1598 @@
+# GENERATED FILE - do not edit by hand.
+# Literature/code blacklist for the HTAN WUSTL multiome evaluation tasks.
+# Regenerate with:
+#   .venv/bin/python scripts/make_literature_blacklist.py --flag-reuse
+# Provenance (why each entry is here, and from which API): literature_blacklist.provenance.json
+# Source paper(s): Epigenetic regulation during cancer transitions across 11 tumour types (doi:10.1038/s41586-023-06682-5, PMID 37914932)
+# Counts: {"pmids": 182, "pmcids": 141, "dois": 287, "urls": 720, "title_contains": 230}
+# Load with: literature_blacklist: <this mapping>  (keys accepted by _normalize_literature_blacklist)
+pmids:
+- '35995947'
+- '36973268'
+- '37198186'
+- '37914932'
+- '38171966'
+- '38274814'
+- '38290247'
+- '38580603'
+- '38658752'
+- '38760585'
+- '38788384'
+- '38890350'
+- '38927095'
+- '38940052'
+- '38981438'
+- '38983808'
+- '39095874'
+- '39144141'
+- '39147755'
+- '39155648'
+- '39177091'
+- '39271835'
+- '39282472'
+- '39300314'
+- '39383060'
+- '39414948'
+- '39423696'
+- '39478117'
+- '39478210'
+- '39486886'
+- '39515720'
+- '39556603'
+- '39558175'
+- '39561277'
+- '39642223'
+- '39651839'
+- '39658266'
+- '39681148'
+- '39707474'
+- '39711032'
+- '39724337'
+- '39779852'
+- '39788105'
+- '39872661'
+- '39887412'
+- '39914387'
+- '39939916'
+- '39941131'
+- '39955575'
+- '39982247'
+- '39987573'
+- '40000710'
+- '40011771'
+- '40032044'
+- '40041484'
+- '40048803'
+- '40057667'
+- '40083715'
+- '40087069'
+- '40119005'
+- '40146803'
+- '40179326'
+- '40207200'
+- '40234694'
+- '40242977'
+- '40258059'
+- '40262617'
+- '40307158'
+- '40319462'
+- '40376515'
+- '40402457'
+- '40461793'
+- '40467779'
+- '40468074'
+- '40471707'
+- '40483547'
+- '40504449'
+- '40508020'
+- '40512188'
+- '40543226'
+- '40544450'
+- '40606924'
+- '40705154'
+- '40727661'
+- '40737838'
+- '40744921'
+- '40753156'
+- '40821714'
+- '40833121'
+- '40838355'
+- '40855431'
+- '40855521'
+- '40884645'
+- '40979557'
+- '40999060'
+- '40999099'
+- '41016387'
+- '41028837'
+- '41035074'
+- '41053815'
+- '41083700'
+- '41120274'
+- '41127266'
+- '41129186'
+- '41177418'
+- '41243956'
+- '41255572'
+- '41296545'
+- '41299571'
+- '41331063'
+- '41360770'
+- '41404378'
+- '41436446'
+- '41473442'
+- '41485222'
+- '41487561'
+- '41498635'
+- '41511464'
+- '41526977'
+- '41529665'
+- '41565051'
+- '41565622'
+- '41567490'
+- '41570447'
+- '41576948'
+- '41605901'
+- '41610511'
+- '41621549'
+- '41637546'
+- '41639465'
+- '41689799'
+- '41701841'
+- '41714613'
+- '41732385'
+- '41735542'
+- '41747370'
+- '41760994'
+- '41781335'
+- '41859964'
+- '41870780'
+- '41872817'
+- '41885448'
+- '41915085'
+- '41927920'
+- '41929055'
+- '41963303'
+- '41996637'
+- '42026980'
+- '42036438'
+- '42048185'
+- '42131111'
+- '42143313'
+- '42159965'
+- '42195095'
+- '42202285'
+- '42226559'
+- '42237704'
+- '42242982'
+- '42282793'
+- '42327254'
+- '42393057'
+- '42437047'
+- '42465316'
+- '42500822'
+- '42526354'
+- '42539880'
+- '42591701'
+- '42612286'
+- '42613348'
+- '42620177'
+- '42642591'
+- '42653084'
+- '42696999'
+- '42699228'
+- '42754139'
+- '42764293'
+- '42827658'
+- '42838052'
+- '42898679'
+- '42958970'
+- '43033883'
+- '43074257'
+pmcids:
+- PMC10042888
+- PMC10192256
+- PMC10632147
+- PMC10808695
+- PMC10844751
+- PMC10932853
+- PMC11096130
+- PMC11186787
+- PMC11189549
+- PMC11201992
+- PMC11229979
+- PMC11295362
+- PMC11321980
+- PMC11327330
+- PMC11337243
+- PMC11379469
+- PMC11392762
+- PMC11464006
+- PMC11525187
+- PMC11584403
+- PMC11611269
+- PMC11623296
+- PMC11662595
+- PMC11701644
+- PMC11749461
+- PMC11754112
+- PMC11770216
+- PMC11786301
+- PMC11818358
+- PMC11823173
+- PMC11830196
+- PMC11843950
+- PMC11847511
+- PMC11848115
+- PMC11861977
+- PMC11872555
+- PMC11876425
+- PMC11903838
+- PMC11949231
+- PMC11981748
+- PMC11995855
+- PMC12013592
+- PMC12018266
+- PMC12045471
+- PMC12058160
+- PMC12076236
+- PMC12081707
+- PMC12130324
+- PMC12137547
+- PMC12145228
+- PMC12154334
+- PMC12210165
+- PMC12266361
+- PMC12290169
+- PMC12290172
+- PMC12307123
+- PMC12314033
+- PMC12318008
+- PMC12343011
+- PMC12350075
+- PMC12350155
+- PMC12356335
+- PMC12373563
+- PMC12376342
+- PMC12376479
+- PMC12446205
+- PMC12486790
+- PMC12498472
+- PMC12518557
+- PMC12520111
+- PMC12538253
+- PMC12541060
+- PMC12620627
+- PMC12628037
+- PMC12628038
+- PMC12659144
+- PMC12678480
+- PMC12686523
+- PMC12704357
+- PMC12715419
+- PMC12728229
+- PMC12745158
+- PMC12756127
+- PMC12783180
+- PMC12784351
+- PMC12784965
+- PMC12807665
+- PMC12807747
+- PMC12818976
+- PMC12833548
+- PMC12852120
+- PMC12857548
+- PMC12875648
+- PMC12877132
+- PMC12888464
+- PMC12903365
+- PMC12921326
+- PMC12924735
+- PMC12933155
+- PMC12948189
+- PMC12958477
+- PMC12978573
+- PMC12983015
+- PMC13017511
+- PMC13038835
+- PMC13041956
+- PMC13043806
+- PMC13049124
+- PMC13084866
+- PMC13137704
+- PMC13138019
+- PMC13158651
+- PMC13161093
+- PMC13167471
+- PMC13181133
+- PMC13208244
+- PMC13215597
+- PMC13239502
+- PMC13252358
+- PMC13274032
+- PMC13278126
+- PMC13282931
+- PMC13355020
+- PMC13371073
+- PMC13376758
+- PMC13398730
+- PMC13401051
+- PMC13424807
+- PMC13449346
+- PMC13462570
+- PMC13463070
+- PMC13479318
+- PMC13484392
+- PMC13486845
+- PMC13513405
+- PMC13544083
+- PMC13590500
+- PMC13631557
+- PMC13675511
+- PMC13678079
+- PMC9470535
+dois:
+- 10.1002/1878-0261.70285
+- 10.1002/adtp.202500270
+- 10.1002/advs.202510302
+- 10.1002/ardp.70244
+- 10.1002/bies.202400183
+- 10.1002/ijc.35307
+- 10.1002/ijc.35350
+- 10.1002/jcp.31414
+- 10.1002/jev2.70317
+- 10.1002/mco2.71026
+- 10.1007/978-1-0716-4558-1_15
+- 10.1007/978-1-0716-4750-9_11
+- 10.1007/978-1-0716-5072-1_5
+- 10.1007/978-3-031-84539-0_7
+- 10.1007/s00249-025-01765-9
+- 10.1007/s11427-025-3273-6
+- 10.1007/s11696-026-04704-w
+- 10.1007/s12551-025-01320-y
+- 10.1007/s12672-025-03221-8
+- 10.1007/s12672-026-04642-9
+- 10.1007/s13105-025-01095-6
+- 10.1007/s13258-026-01775-7
+- 10.1007/s43152-026-00074-3
+- 10.1007/s44178-024-00131-7
+- 10.1007/s44258-024-00032-4
+- 10.1016/b978-0-323-95488-4.00134-0
+- 10.1016/b978-0-323-95488-4.00284-9
+- 10.1016/b978-0-443-18722-3.00013-x
+- 10.1016/j.bbcan.2026.189542
+- 10.1016/j.bbrc.2025.152214
+- 10.1016/j.bioactmat.2026.08.031
+- 10.1016/j.bioorg.2026.110435
+- 10.1016/j.brainres.2025.149529
+- 10.1016/j.bulcan.2025.01.010
+- 10.1016/j.canlet.2026.218252
+- 10.1016/j.ccell.2024.06.004
+- 10.1016/j.ccell.2025.12.003
+- 10.1016/j.ccell.2026.09.004
+- 10.1016/j.cclet.2025.112151
+- 10.1016/j.cellsig.2025.112197
+- 10.1016/j.celrep.2025.115872
+- 10.1016/j.celrep.2025.116708
+- 10.1016/j.celrep.2026.116968
+- 10.1016/j.celrep.2026.117314
+- 10.1016/j.cels.2025.101266
+- 10.1016/j.csbj.2025.07.057
+- 10.1016/j.ctarc.2026.101365
+- 10.1016/j.drudis.2026.104806
+- 10.1016/j.drup.2026.101380
+- 10.1016/j.envint.2025.109813
+- 10.1016/j.envint.2026.110072
+- 10.1016/j.gendis.2025.101830
+- 10.1016/j.gendis.2025.102006
+- 10.1016/j.gene.2024.149178
+- 10.1016/j.ijbiomac.2024.137319
+- 10.1016/j.iliver.2025.100187
+- 10.1016/j.isci.2025.111989
+- 10.1016/j.molstruc.2025.144549
+- 10.1016/j.mtbio.2026.102878
+- 10.1016/j.neo.2025.101268
+- 10.1016/j.neo.2026.101344
+- 10.1016/j.omton.2025.200965
+- 10.1016/j.phrs.2026.109749
+- 10.1016/j.pmatsci.2026.101789
+- 10.1016/j.prp.2025.155865
+- 10.1016/j.smim.2025.101980
+- 10.1016/j.talanta.2024.126299
+- 10.1016/j.tice.2024.102583
+- 10.1016/j.tig.2023.12.005
+- 10.1016/j.tig.2026.05.005
+- 10.1016/j.tips.2024.03.002
+- 10.1016/j.tranon.2024.101882
+- 10.1016/j.trecan.2025.04.004
+- 10.1016/j.treopn.2026.09.010
+- 10.1016/j.xgen.2024.100739
+- 10.1016/j.xgen.2025.100765
+- 10.1016/j.xgen.2025.101133
+- 10.1038/s41392-024-01848-7
+- 10.1038/s41392-025-02340-6
+- 10.1038/s41416-025-02969-8
+- 10.1038/s41419-025-08060-7
+- 10.1038/s41419-025-08403-4
+- 10.1038/s41419-026-08720-2
+- 10.1038/s41421-025-00842-9
+- 10.1038/s41421-025-00863-4
+- 10.1038/s41467-023-37211-7
+- 10.1038/s41467-023-38561-y
+- 10.1038/s41467-024-51380-z
+- 10.1038/s41467-025-62252-5
+- 10.1038/s41467-025-67856-5
+- 10.1038/s41467-026-68576-0
+- 10.1038/s41467-026-74954-5
+- 10.1038/s41467-026-76272-2
+- 10.1038/s41556-025-01758-y
+- 10.1038/s41568-024-00757-9
+- 10.1038/s41568-025-00824-9
+- 10.1038/s41568-025-00873-0
+- 10.1038/s41576-024-00768-0
+- 10.1038/s41586-023-06682-5
+- 10.1038/s41586-024-07328-w
+- 10.1038/s41586-024-08087-4
+- 10.1038/s41586-024-08391-z
+- 10.1038/s41586-025-08633-8
+- 10.1038/s41586-025-09125-5
+- 10.1038/s41586-025-09989-7
+- 10.1038/s41587-024-02377-y
+- 10.1038/s41588-022-01157-1
+- 10.1038/s41591-024-02969-w
+- 10.1038/s41592-025-02822-z
+- 10.1038/s41592-026-03057-2
+- 10.1038/s41596-025-01145-9
+- 10.1038/s41597-025-04666-w
+- 10.1038/s41598-025-19599-y
+- 10.1038/s41598-026-50180-3
+- 10.1038/s41598-026-61239-6
+- 10.1038/s41598-026-66202-z
+- 10.1038/s41698-025-00945-2
+- 10.1038/s42003-025-09305-z
+- 10.1038/s42003-026-09720-w
+- 10.1038/s43018-024-00773-6
+- 10.1038/s44320-025-00098-1
+- 10.1039/d5nr05044h
+- 10.1042/bsr20253197
+- 10.1073/pnas.2523071123
+- 10.1080/14756366.2026.2636394
+- 10.1080/17501911.2025.2548755
+- 10.1093/bib/bbaf069
+- 10.1093/bib/bbaf266
+- 10.1093/bib/bbaf694
+- 10.1093/bib/bbag265
+- 10.1093/bioinformatics/btae522
+- 10.1093/bioinformatics/btaf306
+- 10.1093/gpbjnl/qzae088
+- 10.1093/lifemedi/lnae015
+- 10.1093/nar/gkae1100
+- 10.1093/nar/gkaf1155
+- 10.1093/nar/gkaf1216
+- 10.1093/nar/gkag1065
+- 10.1093/nar/gkag636
+- 10.1093/neuonc/noaf071
+- 10.1101/2021.01.13.426413
+- 10.1101/2023.01.03.522354
+- 10.1101/2023.01.04.522799
+- 10.1101/2023.08.04.552017
+- 10.1101/2023.09.11.557112
+- 10.1101/2023.09.22.559009
+- 10.1101/2023.09.24.559168
+- 10.1101/2023.10.11.561826
+- 10.1101/2023.10.24.563466
+- 10.1101/2023.10.30.564810
+- 10.1101/2023.10.31.565031
+- 10.1101/2023.11.27.568955
+- 10.1101/2023.12.29.23300371
+- 10.1101/2024.03.12.583848
+- 10.1101/2024.03.14.584946
+- 10.1101/2024.05.21.593407
+- 10.1101/2024.06.13.598858
+- 10.1101/2024.06.24.600356
+- 10.1101/2024.08.21.608956
+- 10.1101/2024.08.26.609563
+- 10.1101/2024.11.11.622904
+- 10.1101/2024.11.13.621984
+- 10.1101/2024.12.01.626270
+- 10.1101/2024.12.03.626419
+- 10.1101/2024.12.19.629312
+- 10.1101/2024.12.19.629561
+- 10.1101/2024.12.24.630213
+- 10.1101/2025.01.08.631858
+- 10.1101/2025.04.02.646812
+- 10.1101/2025.04.16.649175
+- 10.1101/2025.04.28.651068
+- 10.1101/2025.05.15.654174
+- 10.1101/2025.05.27.656366
+- 10.1101/2025.08.25.672079
+- 10.1101/2025.09.05.674505
+- 10.1101/2025.09.18.677140
+- 10.1101/2025.10.16.682857
+- 10.1101/gr.281003.125
+- 10.1103/yt89-j872
+- 10.1109/ic2pct68894.2026.11584411
+- 10.1111/cas.16388
+- 10.1126/sciadv.adn0220
+- 10.1136/gutjnl-2024-332281
+- 10.1136/gutjnl-2024-334033
+- 10.1158/0008-5472.can-24-4745
+- 10.1158/2767-9764.crc-26-0163
+- 10.1161/circresaha.124.325685
+- 10.1182/blood-2024-209833
+- 10.1182/blood.2025030493
+- 10.1186/s11658-025-00781-z
+- 10.1186/s12885-025-13641-y
+- 10.1186/s12885-026-15791-z
+- 10.1186/s12906-025-04772-7
+- 10.1186/s12943-024-02069-w
+- 10.1186/s12943-025-02426-3
+- 10.1186/s12967-026-08300-0
+- 10.1186/s12967-026-09169-9
+- 10.1186/s13059-025-03823-z
+- 10.1186/s13059-026-03937-y
+- 10.1186/s13073-025-01562-1
+- 10.1186/s13578-024-01332-3
+- 10.1186/s40364-025-00811-0
+- 10.1186/s43556-026-00423-6
+- 10.1200/po-24-00746
+- 10.12677/hjbm.2024.142030
+- 10.1371/journal.pcbi.1012565
+- 10.1371/journal.pcbi.1012999
+- 10.17615/6ks1-yp71
+- 10.17615/72c3-7v95
+- 10.17615/7wtm-0322
+- 10.18154/rwth-conv-254214
+- 10.21037/tau-2024-688
+- 10.21203/rs.3.rs-10094171/v1
+- 10.21203/rs.3.rs-10732337/v1
+- 10.21203/rs.3.rs-229922/v1
+- 10.21203/rs.3.rs-4087372/v1
+- 10.21203/rs.3.rs-4784256/v1
+- 10.21203/rs.3.rs-5021281/v1
+- 10.21203/rs.3.rs-5814179/v1
+- 10.21203/rs.3.rs-6609843/v1
+- 10.21203/rs.3.rs-8031896/v1
+- 10.21203/rs.3.rs-8626202/v1
+- 10.21203/rs.3.rs-9906267/v1
+- 10.2139/ssrn.4875100
+- 10.2139/ssrn.5182325
+- 10.2139/ssrn.5183457
+- 10.2139/ssrn.5770495
+- 10.2147/ijn.s566173
+- 10.21522/tijph.2013.se.25.02.art005
+- 10.25303/219rjbt2210230
+- 10.26599/nr.2026.94908631
+- 10.31083/j.fbl2906225
+- 10.31234/osf.io/sz9xv_v1
+- 10.32388/wov2jk
+- 10.3389/fcell.2024.1421629
+- 10.3389/fcell.2026.1817560
+- 10.3389/fcell.2026.1924805
+- 10.3389/fimmu.2023.1336187
+- 10.3389/fimmu.2024.1452078
+- 10.3389/fmars.2025.1530224
+- 10.3389/fonc.2025.1688625
+- 10.3389/fonc.2025.1693152
+- 10.3389/fphar.2025.1538205
+- 10.3390/biom14060692
+- 10.3390/epigenomes9010005
+- 10.3390/ijms26031362
+- 10.3390/ijms26115210
+- 10.3390/ijms27167077
+- 10.3390/medicina62050842
+- 10.34133/cancomm.0051
+- 10.34133/research.0930
+- 10.34133/research.0948
+- 10.37349/etat.2026.1002390
+- 10.3892/ijmm.2025.5534
+- 10.3929/ethz-b-000677304
+- 10.3929/ethz-b-000690849
+- 10.4239/wjd.v15.i6.1187
+- 10.4254/wjh.v17.i6.107329
+- 10.48550/arxiv.2505.12638
+- 10.5167/uzh-239858
+- 10.5167/uzh-260256
+- 10.52202/085713-2584
+- 10.52843/cassyni.8z5vq7
+- 10.5772/intechopen.1009809
+- 10.64898/2026.02.19.706848
+- 10.64898/2026.03.23.713651
+- 10.64898/2026.04.09.26350488
+- 10.64898/2026.04.09.717444
+- 10.64898/2026.05.30.728980
+- 10.64898/2026.06.03.729851
+- 10.64898/2026.06.04.729919
+- 10.64898/2026.06.04.730125
+- 10.64898/2026.07.04.736128
+- 10.64898/2026.07.04.736459
+- 10.64898/2026.08.12.744314
+- 10.64898/2026.08.29.747960
+- 10.64898/2026.09.24.754017
+- 10.65215/ltspreprints.2026.09.22.000351
+- 10.69709/genomc.2025.120031
+- 10.70401/acrt.2026.0018
+- 10.7554/elife.94833
+- 10.7554/elife.94833.2
+- 10.7554/elife.94833.2.sa2
+- 10.7554/elife.94833.2.sa3
+- 10.7554/elife.94833.3
+- 10.7554/elife.94833.4
+- 10.7554/elife.94833.4.sa3
+urls:
+- 2021.01.13.426413
+- 2023.10.31.565031
+- api.github.com/repos/ding-lab/ccrcc_sn_publication
+- api.github.com/repos/ding-lab/ccrcc_snrna_analysis
+- api.github.com/repos/ding-lab/cptac_pancan_signature_analysis
+- api.github.com/repos/ding-lab/htan_brca_publication
+- api.github.com/repos/ding-lab/immune_snatac
+- api.github.com/repos/ding-lab/mcrc_publication
+- api.github.com/repos/ding-lab/pancan_snatac_publication
+- api.github.com/repos/ding-lab/pancancerxenium_script
+- api.github.com/repos/ding-lab/st_subclone_publication
+- api.github.com/repos/ding-lab/uchl1_publication
+- arxiv.org/abs/2411.14130
+- arxiv.org/abs/2505.12638
+- biblio.ugent.be/publication/01ka0x9a4zk3j5zcseggs73tvs
+- codeload.github.com/ding-lab/ccrcc_sn_publication
+- codeload.github.com/ding-lab/ccrcc_snrna_analysis
+- codeload.github.com/ding-lab/cptac_pancan_signature_analysis
+- codeload.github.com/ding-lab/htan_brca_publication
+- codeload.github.com/ding-lab/immune_snatac
+- codeload.github.com/ding-lab/mcrc_publication
+- codeload.github.com/ding-lab/pancan_snatac_publication
+- codeload.github.com/ding-lab/pancancerxenium_script
+- codeload.github.com/ding-lab/st_subclone_publication
+- codeload.github.com/ding-lab/uchl1_publication
+- dash.harvard.edu/bitstreams/4c9079de-e828-4898-9dc8-7b341fdffd02/download
+- data.humantumoratlas.org
+- ddd.uab.cat/record/289905
+- ddd.uab.cat/record/309357
+- digitalcommons.library.tmc.edu/baylor_docs/7965
+- digitalcommons.library.tmc.edu/uthgsbs_docs/2790
+- digitalcommons.library.tmc.edu/uthgsbs_docs/4931
+- digitalcommons.wustl.edu/oa_4/1481
+- digitalcommons.wustl.edu/oa_4/3254
+- digitalcommons.wustl.edu/oa_4/362
+- digitalcommons.wustl.edu/oa_4/4413
+- digitalcommons.wustl.edu/oa_4/4560
+- digitalcommons.wustl.edu/oa_4/5027
+- directory.doabooks.org/handle/20.500.12854/171934
+- doaj.org/article/0071299e315a403b801060b52f53387d
+- doaj.org/article/0be0764d509942539665c9522f490a7c
+- doaj.org/article/0c794bcbda8446a982b3f324c4fae648
+- doaj.org/article/0ee170a2ac094666ab388fd5cdfb8235
+- doaj.org/article/1029a65ee65849cea6dc447e80c9f134
+- doaj.org/article/10fd89ffb5b14ceea1794d62d6815d23
+- doaj.org/article/12d253cf070442739be867399eefc6ee
+- doaj.org/article/13cd0e57d8fb48c482578946da763e98
+- doaj.org/article/1aab4838347d46a59a4dd79f096072a3
+- doaj.org/article/1eab693058524a1dab543fd8d8f6090c
+- doaj.org/article/249cf65debf744059e958c2c222908ec
+- doaj.org/article/28bf3b19e55e4cd88cd6f0a1df8e5452
+- doaj.org/article/2b9afe2fa42e4cb9948265f8b56ce370
+- doaj.org/article/2db64c202fb7465a945d086f340e0f5d
+- doaj.org/article/31bc4cc3aadf4d01a635852d571c287f
+- doaj.org/article/32d9bb58ceef402eaa85f84b4b45e126
+- doaj.org/article/3747969581dd47cf98953f69ecb078ee
+- doaj.org/article/384e90228fc34b72b099c6486abf9547
+- doaj.org/article/39c3ee621cd6419584562204b98dc325
+- doaj.org/article/3a422bc882664afc9e90961b169ad935
+- doaj.org/article/3a934fe574be4d4f8a3ae6c85a6ece25
+- doaj.org/article/3b2c788239464d1992b47eb21cb9e9ef
+- doaj.org/article/3beb4a8853d64439bd018369062f793b
+- doaj.org/article/47cd56bdd35f4ce69a02ba166469da0f
+- doaj.org/article/4b7d19911fd445b79edb43d7e00fe966
+- doaj.org/article/4d31bc059e1347d3bf12eb650dcbafd0
+- doaj.org/article/51e2a288b0ac4015a0946cc79304bd4d
+- doaj.org/article/52d7c4a417db45dcb97a088bf16446fb
+- doaj.org/article/53fa3c668ce24fe99d473eb2c80afac3
+- doaj.org/article/5bf8fa53ea4440afa1899bc9528119b3
+- doaj.org/article/5e4d3b984c7243f29ef1543638b6150c
+- doaj.org/article/60d1a1437e89442f8662e94b51a0a4dc
+- doaj.org/article/6294c156df34462ca875f96bb063bfbe
+- doaj.org/article/63f48ecec39a4298a2513f60ba9d08d1
+- doaj.org/article/6454479e28094664b9f48355c7c948a8
+- doaj.org/article/6a2dc9f4d10d45d1869aedc782c315e9
+- doaj.org/article/7256956693c54e29b66a209002007392
+- doaj.org/article/75d01cabbb24493dbaff3069f6dffeac
+- doaj.org/article/79b5a389ff564d7483970fe6fc0bbb41
+- doaj.org/article/86b76d38f654476ca45c857a04865a97
+- doaj.org/article/87ac8ee8d8bf4ab3932c1f304e104d8f
+- doaj.org/article/8c420ce83a044cdba7664f1a923a53eb
+- doaj.org/article/8d85518dffe649fdba17ef89c7590c81
+- doaj.org/article/90069001a2ad4e6fac1617e33886bfb3
+- doaj.org/article/93880cc0af844d3383f250b1e7a8c7c6
+- doaj.org/article/945c315544544ce08c5cf12d15920442
+- doaj.org/article/9534203ebfbb43a1ba9d403fd3f19abd
+- doaj.org/article/9712827c651948438aa338f2d4dd65f8
+- doaj.org/article/976b257aae394f5ab5b460754a18e923
+- doaj.org/article/98f3585a0f554483983d140695d21e97
+- doaj.org/article/99fc8abacbb144739ab792c09391a6b3
+- doaj.org/article/9b67d12f9eff4a8f9702e3a344e039c1
+- doaj.org/article/9b7f48c6ce62480bbf6dc626d71d51f6
+- doaj.org/article/9cf0e16d12c64b598add66a64e924a02
+- doaj.org/article/a30c2d0bcc57483ab59a582ac1bf6a35
+- doaj.org/article/a86367809b9049f399bfbd84d36fad2c
+- doaj.org/article/ac1e2ba23e1e4d788db33888730bb4ad
+- doaj.org/article/ad45637d4dcf4829ba97571c099aa34d
+- doaj.org/article/b67f7c9b52314ee297156593838137dc
+- doaj.org/article/b6ee2d9ab48d457aa2d09b478f4edd5c
+- doaj.org/article/bac809739bc2412b97cfb8ad3400f66b
+- doaj.org/article/c07a76910ddc4338a22df65219748e1c
+- doaj.org/article/c3fcb517b58a460d9ed4c86c501c3b87
+- doaj.org/article/c8ecf61ca45b48b3acf9f1e1477ea7ba
+- doaj.org/article/cbe94f8bc76542bdb72cfa3d717e0e40
+- doaj.org/article/cd4226ac42034d349061431ce16cadd7
+- doaj.org/article/cd8deb9183ac4653af7c268d41115ed2
+- doaj.org/article/cf0b9aceff4041a9b1e46c41955f65a2
+- doaj.org/article/d1265842710c4dacaed400e772db5c74
+- doaj.org/article/d4118b86c1404ddebcbcb7b0ee973376
+- doaj.org/article/e389f34cb1674be183b40b59db7e2d8a
+- doaj.org/article/e8a534a05b7d4e57a6f92768ca6df746
+- doaj.org/article/e96153731a764903bd78889ba3bbe2cf
+- doaj.org/article/e9f1b91b6e6048d490918f778e8f87c6
+- doaj.org/article/eb3bf11a25094323b93c498a2ff3e53a
+- doaj.org/article/ebae787e34f6436cb17c95ebd143e39c
+- doaj.org/article/ee2719c5970047b981cf04d2ea0d2859
+- doaj.org/article/f1983ae1a31d47f5b91e32775219cf63
+- doaj.org/article/f1e225c958cf48d29abdb4ad3857630a
+- doaj.org/article/f6a8d132a2184bfd98fff60b790f10b2
+- doaj.org/article/fa90464b197247fb88f1dfd31dd52023
+- doaj.org/article/fd169da4eccd46d28f702fba89461d95
+- dovepress.com/advancing-epigenetic-combination-therapy-in-oncology-multifunctional-n-peer-reviewed-fulltext-article-ijn
+- dspace.library.uu.nl/handle/1874/465333
+- dspace.library.uu.nl/handle/1874/484901
+- eprints.gla.ac.uk/357938
+- eprints.whiterose.ac.uk/id/eprint/218163/1/fcell-12-1421629.pdf
+- escholarship.org/uc/item/1jn1p1r3
+- escholarship.org/uc/item/8pq5m5bv
+- europepmc.org/abstract/med/35995947
+- europepmc.org/abstract/med/36973268
+- europepmc.org/abstract/med/37198186
+- europepmc.org/abstract/med/37914932
+- europepmc.org/abstract/med/39478117
+- europepmc.org/abstract/med/39478210
+- europepmc.org/article/med/35995947
+- europepmc.org/article/med/36973268
+- europepmc.org/article/med/37198186
+- europepmc.org/article/med/37914932
+- europepmc.org/article/med/39478117
+- europepmc.org/article/med/39478210
+- freidok.uni-freiburg.de/data/261282
+- freidok.uni-freiburg.de/data/268639
+- github.com/brain-ninja/pancan_snatac_publication
+- github.com/chenmengpin/ccrcc_snrna_analysis
+- github.com/claraliu97/st_subclone_publication
+- github.com/ding-lab/ccrcc_sn_publication
+- github.com/ding-lab/ccrcc_snrna_analysis
+- github.com/ding-lab/cptac_pancan_signature_analysis
+- github.com/ding-lab/htan_brca_publication
+- github.com/ding-lab/immune_snatac
+- github.com/ding-lab/mcrc_publication
+- github.com/ding-lab/pancan_snatac_publication
+- github.com/ding-lab/pancancerxenium_script
+- github.com/ding-lab/st_subclone_publication
+- github.com/ding-lab/uchl1_publication
+- github.com/dmh-tanfu-git/st_subclone_publication
+- github.com/genomicsnx/ccrcc_snrna_analysis
+- github.com/gladelephant/2024_nature_dingli
+- github.com/hediatnani/pancan_snatac_publication
+- github.com/huizhong1993/ccrcc_sn_publication
+- github.com/jianguozhou3/ccrcc_snrna_analysis
+- github.com/nvterekhanova/ccrcc_sn_publication
+- github.com/nvterekhanova/ccrcc_snrna_analysis
+- github.com/nvterekhanova/pancan_snatac_publication
+- github.com/penguinmeow/ccrcc_snrna_analysis
+- github.com/ritatalu/htan_brca_publication
+- github.com/shengxinbaixiaosheng/st_subclone_publication
+- github.com/simoncmo/htan_brca_publication
+- github.com/sscien/pancan_snatac_publication
+- github.com/sukses24/pancan_snatac_publication
+- github.com/yigewu/ccrcc_snrna_analysis
+- github.com/zhenhua2020/st_subclone_publication
+- gse240699
+- gse240822
+- hal.science/hal-04581411
+- hal.science/hal-04704598
+- hal.science/hal-04840627/document
+- hal.science/hal-05720117v1
+- hal.umontpellier.fr/hal-04252107
+- hdl.handle.net/10183/281391
+- hdl.handle.net/10230/68870
+- hdl.handle.net/10230/73915
+- hdl.handle.net/10356/206761
+- hdl.handle.net/10807/341576
+- hdl.handle.net/1805/50801
+- hdl.handle.net/1805/53834
+- hdl.handle.net/20.500.11850/677304
+- hdl.handle.net/20.500.11850/690849
+- hdl.handle.net/2013/ulb-dipot:oai:dipot.ulb.ac.be:2013/395593
+- hdl.handle.net/2013/ulb-dipot:oai:dipot.ulb.ac.be:2013/402989
+- hdl.handle.net/2072/474289
+- hdl.handle.net/2117/479955
+- hub.hku.hk/handle/10722/355356
+- inserm.hal.science/inserm-05151144
+- iris.unil.ch/handle/iris/153292
+- iris.unil.ch/handle/iris/226816
+- kclpure.kcl.ac.uk/portal/en/publications/d51188b3-e548-458b-9070-695c2e7a4b6e
+- lirias.kuleuven.be/handle/20.500.12942/748159
+- lirias.kuleuven.be/handle/20.500.12942/774320
+- marianna-u.repo.nii.ac.jp/record/2000934/files/cas16388-sup-0001-figures1.jpg
+- mediatum.ub.tum.de/1751280
+- mediatum.ub.tum.de/1769693
+- mouseion.jax.org/stfb2023/86
+- nature.com/articles/s41467-023-37211-7
+- nature.com/articles/s41467-023-38561-y
+- nature.com/articles/s41467-024-51380-z
+- nature.com/articles/s41586-023-06682-5
+- nature.com/articles/s41586-024-07328-w
+- nature.com/articles/s41586-024-08087-4
+- nature.com/articles/s41586-024-08391-z
+- nature.com/articles/s41586-025-08633-8
+- nbn-resolving.org/urn:nbn:de:hebis:30:3-750924
+- ncbi.nlm.nih.gov/pmc/articles/10042888
+- ncbi.nlm.nih.gov/pmc/articles/10192256
+- ncbi.nlm.nih.gov/pmc/articles/10441357
+- ncbi.nlm.nih.gov/pmc/articles/10632147
+- ncbi.nlm.nih.gov/pmc/articles/10634776
+- ncbi.nlm.nih.gov/pmc/articles/10634973
+- ncbi.nlm.nih.gov/pmc/articles/10705546
+- ncbi.nlm.nih.gov/pmc/articles/10808695
+- ncbi.nlm.nih.gov/pmc/articles/10844751
+- ncbi.nlm.nih.gov/pmc/articles/10932853
+- ncbi.nlm.nih.gov/pmc/articles/11096130
+- ncbi.nlm.nih.gov/pmc/articles/11186787
+- ncbi.nlm.nih.gov/pmc/articles/11189549
+- ncbi.nlm.nih.gov/pmc/articles/11201992
+- ncbi.nlm.nih.gov/pmc/articles/11212881
+- ncbi.nlm.nih.gov/pmc/articles/11229979
+- ncbi.nlm.nih.gov/pmc/articles/11244937
+- ncbi.nlm.nih.gov/pmc/articles/11295362
+- ncbi.nlm.nih.gov/pmc/articles/11321980
+- ncbi.nlm.nih.gov/pmc/articles/11327330
+- ncbi.nlm.nih.gov/pmc/articles/11337243
+- ncbi.nlm.nih.gov/pmc/articles/11379469
+- ncbi.nlm.nih.gov/pmc/articles/11392762
+- ncbi.nlm.nih.gov/pmc/articles/11464006
+- ncbi.nlm.nih.gov/pmc/articles/11525187
+- ncbi.nlm.nih.gov/pmc/articles/11584403
+- ncbi.nlm.nih.gov/pmc/articles/11601388
+- ncbi.nlm.nih.gov/pmc/articles/11611269
+- ncbi.nlm.nih.gov/pmc/articles/11623296
+- ncbi.nlm.nih.gov/pmc/articles/11662595
+- ncbi.nlm.nih.gov/pmc/articles/11701644
+- ncbi.nlm.nih.gov/pmc/articles/11749461
+- ncbi.nlm.nih.gov/pmc/articles/11754112
+- ncbi.nlm.nih.gov/pmc/articles/11770216
+- ncbi.nlm.nih.gov/pmc/articles/11786301
+- ncbi.nlm.nih.gov/pmc/articles/11818358
+- ncbi.nlm.nih.gov/pmc/articles/11823173
+- ncbi.nlm.nih.gov/pmc/articles/11830196
+- ncbi.nlm.nih.gov/pmc/articles/11843950
+- ncbi.nlm.nih.gov/pmc/articles/11847511
+- ncbi.nlm.nih.gov/pmc/articles/11848115
+- ncbi.nlm.nih.gov/pmc/articles/11861977
+- ncbi.nlm.nih.gov/pmc/articles/11872555
+- ncbi.nlm.nih.gov/pmc/articles/11876425
+- ncbi.nlm.nih.gov/pmc/articles/11903838
+- ncbi.nlm.nih.gov/pmc/articles/11949231
+- ncbi.nlm.nih.gov/pmc/articles/11981748
+- ncbi.nlm.nih.gov/pmc/articles/11995855
+- ncbi.nlm.nih.gov/pmc/articles/12013592
+- ncbi.nlm.nih.gov/pmc/articles/12018266
+- ncbi.nlm.nih.gov/pmc/articles/12045471
+- ncbi.nlm.nih.gov/pmc/articles/12058160
+- ncbi.nlm.nih.gov/pmc/articles/12076236
+- ncbi.nlm.nih.gov/pmc/articles/12081707
+- ncbi.nlm.nih.gov/pmc/articles/12130324
+- ncbi.nlm.nih.gov/pmc/articles/12137547
+- ncbi.nlm.nih.gov/pmc/articles/12145228
+- ncbi.nlm.nih.gov/pmc/articles/12154334
+- ncbi.nlm.nih.gov/pmc/articles/12210165
+- ncbi.nlm.nih.gov/pmc/articles/12266361
+- ncbi.nlm.nih.gov/pmc/articles/12290169
+- ncbi.nlm.nih.gov/pmc/articles/12290172
+- ncbi.nlm.nih.gov/pmc/articles/12307123
+- ncbi.nlm.nih.gov/pmc/articles/12314033
+- ncbi.nlm.nih.gov/pmc/articles/12318008
+- ncbi.nlm.nih.gov/pmc/articles/12343011
+- ncbi.nlm.nih.gov/pmc/articles/12350075
+- ncbi.nlm.nih.gov/pmc/articles/12350155
+- ncbi.nlm.nih.gov/pmc/articles/12356335
+- ncbi.nlm.nih.gov/pmc/articles/12373563
+- ncbi.nlm.nih.gov/pmc/articles/12376342
+- ncbi.nlm.nih.gov/pmc/articles/12376479
+- ncbi.nlm.nih.gov/pmc/articles/12446205
+- ncbi.nlm.nih.gov/pmc/articles/12486790
+- ncbi.nlm.nih.gov/pmc/articles/12498472
+- ncbi.nlm.nih.gov/pmc/articles/12518557
+- ncbi.nlm.nih.gov/pmc/articles/12520111
+- ncbi.nlm.nih.gov/pmc/articles/12538253
+- ncbi.nlm.nih.gov/pmc/articles/12541060
+- ncbi.nlm.nih.gov/pmc/articles/12620627
+- ncbi.nlm.nih.gov/pmc/articles/12628037
+- ncbi.nlm.nih.gov/pmc/articles/12628038
+- ncbi.nlm.nih.gov/pmc/articles/12659144
+- ncbi.nlm.nih.gov/pmc/articles/12678480
+- ncbi.nlm.nih.gov/pmc/articles/12686523
+- ncbi.nlm.nih.gov/pmc/articles/12704357
+- ncbi.nlm.nih.gov/pmc/articles/12715419
+- ncbi.nlm.nih.gov/pmc/articles/12728229
+- ncbi.nlm.nih.gov/pmc/articles/12745158
+- ncbi.nlm.nih.gov/pmc/articles/12756127
+- ncbi.nlm.nih.gov/pmc/articles/12783180
+- ncbi.nlm.nih.gov/pmc/articles/12784351
+- ncbi.nlm.nih.gov/pmc/articles/12784965
+- ncbi.nlm.nih.gov/pmc/articles/12807665
+- ncbi.nlm.nih.gov/pmc/articles/12807747
+- ncbi.nlm.nih.gov/pmc/articles/12818976
+- ncbi.nlm.nih.gov/pmc/articles/12833548
+- ncbi.nlm.nih.gov/pmc/articles/12852120
+- ncbi.nlm.nih.gov/pmc/articles/12857548
+- ncbi.nlm.nih.gov/pmc/articles/12875648
+- ncbi.nlm.nih.gov/pmc/articles/12877132
+- ncbi.nlm.nih.gov/pmc/articles/12888464
+- ncbi.nlm.nih.gov/pmc/articles/12903365
+- ncbi.nlm.nih.gov/pmc/articles/12921326
+- ncbi.nlm.nih.gov/pmc/articles/12924735
+- ncbi.nlm.nih.gov/pmc/articles/12933155
+- ncbi.nlm.nih.gov/pmc/articles/12948189
+- ncbi.nlm.nih.gov/pmc/articles/12958477
+- ncbi.nlm.nih.gov/pmc/articles/12978573
+- ncbi.nlm.nih.gov/pmc/articles/12983015
+- ncbi.nlm.nih.gov/pmc/articles/13017511
+- ncbi.nlm.nih.gov/pmc/articles/13038835
+- ncbi.nlm.nih.gov/pmc/articles/13041956
+- ncbi.nlm.nih.gov/pmc/articles/13043806
+- ncbi.nlm.nih.gov/pmc/articles/13049124
+- ncbi.nlm.nih.gov/pmc/articles/13084866
+- ncbi.nlm.nih.gov/pmc/articles/13137704
+- ncbi.nlm.nih.gov/pmc/articles/13138019
+- ncbi.nlm.nih.gov/pmc/articles/13158651
+- ncbi.nlm.nih.gov/pmc/articles/13161093
+- ncbi.nlm.nih.gov/pmc/articles/13167471
+- ncbi.nlm.nih.gov/pmc/articles/13181133
+- ncbi.nlm.nih.gov/pmc/articles/13208244
+- ncbi.nlm.nih.gov/pmc/articles/13215597
+- ncbi.nlm.nih.gov/pmc/articles/13239502
+- ncbi.nlm.nih.gov/pmc/articles/13252358
+- ncbi.nlm.nih.gov/pmc/articles/13274032
+- ncbi.nlm.nih.gov/pmc/articles/13278126
+- ncbi.nlm.nih.gov/pmc/articles/13282931
+- ncbi.nlm.nih.gov/pmc/articles/13355020
+- ncbi.nlm.nih.gov/pmc/articles/13371073
+- ncbi.nlm.nih.gov/pmc/articles/13376758
+- ncbi.nlm.nih.gov/pmc/articles/13398730
+- ncbi.nlm.nih.gov/pmc/articles/13401051
+- ncbi.nlm.nih.gov/pmc/articles/13424807
+- ncbi.nlm.nih.gov/pmc/articles/13449346
+- ncbi.nlm.nih.gov/pmc/articles/13462570
+- ncbi.nlm.nih.gov/pmc/articles/13463070
+- ncbi.nlm.nih.gov/pmc/articles/13479318
+- ncbi.nlm.nih.gov/pmc/articles/13484392
+- ncbi.nlm.nih.gov/pmc/articles/13486845
+- ncbi.nlm.nih.gov/pmc/articles/13513405
+- ncbi.nlm.nih.gov/pmc/articles/13544083
+- ncbi.nlm.nih.gov/pmc/articles/13590500
+- ncbi.nlm.nih.gov/pmc/articles/13631557
+- ncbi.nlm.nih.gov/pmc/articles/13675511
+- ncbi.nlm.nih.gov/pmc/articles/13678079
+- ncbi.nlm.nih.gov/pmc/articles/9470535
+- ncbi.nlm.nih.gov/pubmed/35995947
+- ncbi.nlm.nih.gov/pubmed/36973268
+- ncbi.nlm.nih.gov/pubmed/37198186
+- ncbi.nlm.nih.gov/pubmed/37914932
+- ncbi.nlm.nih.gov/pubmed/39478117
+- ncbi.nlm.nih.gov/pubmed/39478210
+- open.fau.de/handle/openfau/38995
+- ora.ox.ac.uk/objects/uuid:fdac0f3f-0f74-4b54-9bbd-acb48737b8c4/files/rjq085m60f
+- orbit.dtu.dk/en/publications/7244a17a-8723-4662-b867-2084d25f7b92
+- osti.gov/biblio/2406583
+- phs001287
+- phs002371
+- pmc.ncbi.nlm.nih.gov/articles/pmc10932853
+- pmc.ncbi.nlm.nih.gov/articles/pmc11830196
+- pmc.ncbi.nlm.nih.gov/articles/pmc11847511
+- pmc.ncbi.nlm.nih.gov/articles/pmc11861977
+- pmc.ncbi.nlm.nih.gov/articles/pmc11876425
+- pmc.ncbi.nlm.nih.gov/articles/pmc11949231
+- pmc.ncbi.nlm.nih.gov/articles/pmc11981748
+- pmc.ncbi.nlm.nih.gov/articles/pmc11995855
+- pmc.ncbi.nlm.nih.gov/articles/pmc12018266
+- pmc.ncbi.nlm.nih.gov/articles/pmc12045471
+- pmc.ncbi.nlm.nih.gov/articles/pmc12058160
+- pmc.ncbi.nlm.nih.gov/articles/pmc12076236
+- pmc.ncbi.nlm.nih.gov/articles/pmc12081707
+- pmc.ncbi.nlm.nih.gov/articles/pmc12130324
+- pmc.ncbi.nlm.nih.gov/articles/pmc12137547
+- pmc.ncbi.nlm.nih.gov/articles/pmc12139875
+- pmc.ncbi.nlm.nih.gov/articles/pmc12145228
+- pmc.ncbi.nlm.nih.gov/articles/pmc12154334
+- pmc.ncbi.nlm.nih.gov/articles/pmc12154754
+- pmc.ncbi.nlm.nih.gov/articles/pmc12210165
+- pmc.ncbi.nlm.nih.gov/articles/pmc12290169
+- pmc.ncbi.nlm.nih.gov/articles/pmc12290172
+- pmc.ncbi.nlm.nih.gov/articles/pmc12307123
+- pmc.ncbi.nlm.nih.gov/articles/pmc12314033
+- pmc.ncbi.nlm.nih.gov/articles/pmc12318008
+- pmc.ncbi.nlm.nih.gov/articles/pmc12350075
+- pmc.ncbi.nlm.nih.gov/articles/pmc12356335
+- pmc.ncbi.nlm.nih.gov/articles/pmc12373563
+- pmc.ncbi.nlm.nih.gov/articles/pmc12376342
+- pmc.ncbi.nlm.nih.gov/articles/pmc12376479
+- pmc.ncbi.nlm.nih.gov/articles/pmc12446205
+- pmc.ncbi.nlm.nih.gov/articles/pmc12486790
+- pmc.ncbi.nlm.nih.gov/articles/pmc12498472
+- pmc.ncbi.nlm.nih.gov/articles/pmc12538253
+- pmc.ncbi.nlm.nih.gov/articles/pmc12541060
+- pmc.ncbi.nlm.nih.gov/articles/pmc12620627
+- pmc.ncbi.nlm.nih.gov/articles/pmc12628037
+- pmc.ncbi.nlm.nih.gov/articles/pmc12628038
+- pmc.ncbi.nlm.nih.gov/articles/pmc12659144
+- pmc.ncbi.nlm.nih.gov/articles/pmc12678480
+- pmc.ncbi.nlm.nih.gov/articles/pmc12686523
+- pmc.ncbi.nlm.nih.gov/articles/pmc12704357
+- pmc.ncbi.nlm.nih.gov/articles/pmc12715419
+- pmc.ncbi.nlm.nih.gov/articles/pmc12728229
+- pmc.ncbi.nlm.nih.gov/articles/pmc12745158
+- pmc.ncbi.nlm.nih.gov/articles/pmc12756127
+- pmc.ncbi.nlm.nih.gov/articles/pmc12783180
+- pmc.ncbi.nlm.nih.gov/articles/pmc12784351
+- pmc.ncbi.nlm.nih.gov/articles/pmc12784965
+- pmc.ncbi.nlm.nih.gov/articles/pmc12807665
+- pmc.ncbi.nlm.nih.gov/articles/pmc12807747
+- pmc.ncbi.nlm.nih.gov/articles/pmc12818976
+- pmc.ncbi.nlm.nih.gov/articles/pmc12833548
+- pmc.ncbi.nlm.nih.gov/articles/pmc12852120
+- pmc.ncbi.nlm.nih.gov/articles/pmc12857548
+- pmc.ncbi.nlm.nih.gov/articles/pmc12875648
+- pmc.ncbi.nlm.nih.gov/articles/pmc12877132
+- pmc.ncbi.nlm.nih.gov/articles/pmc12888464
+- pmc.ncbi.nlm.nih.gov/articles/pmc12903365
+- pmc.ncbi.nlm.nih.gov/articles/pmc12921326
+- pmc.ncbi.nlm.nih.gov/articles/pmc12924735
+- pmc.ncbi.nlm.nih.gov/articles/pmc12933155
+- pmc.ncbi.nlm.nih.gov/articles/pmc12948189
+- pmc.ncbi.nlm.nih.gov/articles/pmc12958477
+- pmc.ncbi.nlm.nih.gov/articles/pmc12978573
+- pmc.ncbi.nlm.nih.gov/articles/pmc12983015
+- pmc.ncbi.nlm.nih.gov/articles/pmc13017511
+- pmc.ncbi.nlm.nih.gov/articles/pmc13038835
+- pmc.ncbi.nlm.nih.gov/articles/pmc13041956
+- pmc.ncbi.nlm.nih.gov/articles/pmc13043806
+- pmc.ncbi.nlm.nih.gov/articles/pmc13049124
+- pmc.ncbi.nlm.nih.gov/articles/pmc13084866
+- pmc.ncbi.nlm.nih.gov/articles/pmc13137704
+- pmc.ncbi.nlm.nih.gov/articles/pmc13138019
+- pmc.ncbi.nlm.nih.gov/articles/pmc13158651
+- pmc.ncbi.nlm.nih.gov/articles/pmc13161093
+- pmc.ncbi.nlm.nih.gov/articles/pmc13167471
+- pmc.ncbi.nlm.nih.gov/articles/pmc13181133
+- pmc.ncbi.nlm.nih.gov/articles/pmc13208244
+- pmc.ncbi.nlm.nih.gov/articles/pmc13215597
+- pmc.ncbi.nlm.nih.gov/articles/pmc13239502
+- pmc.ncbi.nlm.nih.gov/articles/pmc13252358
+- pmc.ncbi.nlm.nih.gov/articles/pmc13274032
+- pmc.ncbi.nlm.nih.gov/articles/pmc13278126
+- pmc.ncbi.nlm.nih.gov/articles/pmc13282931
+- pmc.ncbi.nlm.nih.gov/articles/pmc13355020
+- pmc.ncbi.nlm.nih.gov/articles/pmc13371073
+- pmc.ncbi.nlm.nih.gov/articles/pmc13376758
+- pmc.ncbi.nlm.nih.gov/articles/pmc13398730
+- pmc.ncbi.nlm.nih.gov/articles/pmc13401051
+- pmc.ncbi.nlm.nih.gov/articles/pmc13424807
+- pmc.ncbi.nlm.nih.gov/articles/pmc13449346
+- pmc.ncbi.nlm.nih.gov/articles/pmc13462570
+- pmc.ncbi.nlm.nih.gov/articles/pmc13463070
+- pmc.ncbi.nlm.nih.gov/articles/pmc13479318
+- pmc.ncbi.nlm.nih.gov/articles/pmc13484392
+- pmc.ncbi.nlm.nih.gov/articles/pmc13486845
+- pmc.ncbi.nlm.nih.gov/articles/pmc13513405
+- pmc.ncbi.nlm.nih.gov/articles/pmc13544083
+- pmc.ncbi.nlm.nih.gov/articles/pmc13590500
+- pmc.ncbi.nlm.nih.gov/articles/pmc13631557
+- pmc.ncbi.nlm.nih.gov/articles/pmc13675511
+- pmc.ncbi.nlm.nih.gov/articles/pmc13678079
+- pmc.ncbi.nlm.nih.gov/articles/pmc9470535
+- pmc.ncbi.nlm.nih.gov/articles/pmc9881845
+- portal.findresearcher.sdu.dk/da/publications/852b2c87-35a7-4cea-8d56-b95a5b89e700
+- publications.rwth-aachen.de/record/1007848
+- publications.rwth-aachen.de/record/982425
+- pubmed.ncbi.nlm.nih.gov/35995947
+- pubmed.ncbi.nlm.nih.gov/36711632
+- pubmed.ncbi.nlm.nih.gov/36973268
+- pubmed.ncbi.nlm.nih.gov/37198186
+- pubmed.ncbi.nlm.nih.gov/37609137
+- pubmed.ncbi.nlm.nih.gov/37914932
+- pubmed.ncbi.nlm.nih.gov/37961519
+- pubmed.ncbi.nlm.nih.gov/37961527
+- pubmed.ncbi.nlm.nih.gov/38076973
+- pubmed.ncbi.nlm.nih.gov/38171966
+- pubmed.ncbi.nlm.nih.gov/38274814
+- pubmed.ncbi.nlm.nih.gov/38290247
+- pubmed.ncbi.nlm.nih.gov/38580603
+- pubmed.ncbi.nlm.nih.gov/38658752
+- pubmed.ncbi.nlm.nih.gov/38760585
+- pubmed.ncbi.nlm.nih.gov/38788384
+- pubmed.ncbi.nlm.nih.gov/38890350
+- pubmed.ncbi.nlm.nih.gov/38927095
+- pubmed.ncbi.nlm.nih.gov/38940052
+- pubmed.ncbi.nlm.nih.gov/38948758
+- pubmed.ncbi.nlm.nih.gov/38981438
+- pubmed.ncbi.nlm.nih.gov/38983808
+- pubmed.ncbi.nlm.nih.gov/39005360
+- pubmed.ncbi.nlm.nih.gov/39095874
+- pubmed.ncbi.nlm.nih.gov/39144141
+- pubmed.ncbi.nlm.nih.gov/39147755
+- pubmed.ncbi.nlm.nih.gov/39155648
+- pubmed.ncbi.nlm.nih.gov/39177091
+- pubmed.ncbi.nlm.nih.gov/39271835
+- pubmed.ncbi.nlm.nih.gov/39282472
+- pubmed.ncbi.nlm.nih.gov/39300314
+- pubmed.ncbi.nlm.nih.gov/39383060
+- pubmed.ncbi.nlm.nih.gov/39414948
+- pubmed.ncbi.nlm.nih.gov/39423696
+- pubmed.ncbi.nlm.nih.gov/39478117
+- pubmed.ncbi.nlm.nih.gov/39478210
+- pubmed.ncbi.nlm.nih.gov/39486886
+- pubmed.ncbi.nlm.nih.gov/39515720
+- pubmed.ncbi.nlm.nih.gov/39556603
+- pubmed.ncbi.nlm.nih.gov/39558175
+- pubmed.ncbi.nlm.nih.gov/39561277
+- pubmed.ncbi.nlm.nih.gov/39605631
+- pubmed.ncbi.nlm.nih.gov/39642223
+- pubmed.ncbi.nlm.nih.gov/39651839
+- pubmed.ncbi.nlm.nih.gov/39658266
+- pubmed.ncbi.nlm.nih.gov/39681148
+- pubmed.ncbi.nlm.nih.gov/39707474
+- pubmed.ncbi.nlm.nih.gov/39711032
+- pubmed.ncbi.nlm.nih.gov/39724337
+- pubmed.ncbi.nlm.nih.gov/39779852
+- pubmed.ncbi.nlm.nih.gov/39788105
+- pubmed.ncbi.nlm.nih.gov/39872661
+- pubmed.ncbi.nlm.nih.gov/39887412
+- pubmed.ncbi.nlm.nih.gov/39914387
+- pubmed.ncbi.nlm.nih.gov/39939916
+- pubmed.ncbi.nlm.nih.gov/39941131
+- pubmed.ncbi.nlm.nih.gov/39955575
+- pubmed.ncbi.nlm.nih.gov/39982247
+- pubmed.ncbi.nlm.nih.gov/39987573
+- pubmed.ncbi.nlm.nih.gov/40000710
+- pubmed.ncbi.nlm.nih.gov/40011771
+- pubmed.ncbi.nlm.nih.gov/40032044
+- pubmed.ncbi.nlm.nih.gov/40041484
+- pubmed.ncbi.nlm.nih.gov/40048803
+- pubmed.ncbi.nlm.nih.gov/40057667
+- pubmed.ncbi.nlm.nih.gov/40083715
+- pubmed.ncbi.nlm.nih.gov/40087069
+- pubmed.ncbi.nlm.nih.gov/40119005
+- pubmed.ncbi.nlm.nih.gov/40146803
+- pubmed.ncbi.nlm.nih.gov/40179326
+- pubmed.ncbi.nlm.nih.gov/40207200
+- pubmed.ncbi.nlm.nih.gov/40234694
+- pubmed.ncbi.nlm.nih.gov/40242977
+- pubmed.ncbi.nlm.nih.gov/40258059
+- pubmed.ncbi.nlm.nih.gov/40262617
+- pubmed.ncbi.nlm.nih.gov/40307158
+- pubmed.ncbi.nlm.nih.gov/40319462
+- pubmed.ncbi.nlm.nih.gov/40376515
+- pubmed.ncbi.nlm.nih.gov/40402457
+- pubmed.ncbi.nlm.nih.gov/40461793
+- pubmed.ncbi.nlm.nih.gov/40467779
+- pubmed.ncbi.nlm.nih.gov/40468074
+- pubmed.ncbi.nlm.nih.gov/40471707
+- pubmed.ncbi.nlm.nih.gov/40475542
+- pubmed.ncbi.nlm.nih.gov/40483547
+- pubmed.ncbi.nlm.nih.gov/40502039
+- pubmed.ncbi.nlm.nih.gov/40504449
+- pubmed.ncbi.nlm.nih.gov/40508020
+- pubmed.ncbi.nlm.nih.gov/40512188
+- pubmed.ncbi.nlm.nih.gov/40543226
+- pubmed.ncbi.nlm.nih.gov/40544450
+- pubmed.ncbi.nlm.nih.gov/40606924
+- pubmed.ncbi.nlm.nih.gov/40705154
+- pubmed.ncbi.nlm.nih.gov/40727661
+- pubmed.ncbi.nlm.nih.gov/40737838
+- pubmed.ncbi.nlm.nih.gov/40744921
+- pubmed.ncbi.nlm.nih.gov/40753156
+- pubmed.ncbi.nlm.nih.gov/40821714
+- pubmed.ncbi.nlm.nih.gov/40833121
+- pubmed.ncbi.nlm.nih.gov/40838355
+- pubmed.ncbi.nlm.nih.gov/40855431
+- pubmed.ncbi.nlm.nih.gov/40855521
+- pubmed.ncbi.nlm.nih.gov/40884645
+- pubmed.ncbi.nlm.nih.gov/40979557
+- pubmed.ncbi.nlm.nih.gov/40999060
+- pubmed.ncbi.nlm.nih.gov/40999099
+- pubmed.ncbi.nlm.nih.gov/41016387
+- pubmed.ncbi.nlm.nih.gov/41028837
+- pubmed.ncbi.nlm.nih.gov/41035074
+- pubmed.ncbi.nlm.nih.gov/41053815
+- pubmed.ncbi.nlm.nih.gov/41083700
+- pubmed.ncbi.nlm.nih.gov/41120274
+- pubmed.ncbi.nlm.nih.gov/41127266
+- pubmed.ncbi.nlm.nih.gov/41129186
+- pubmed.ncbi.nlm.nih.gov/41177418
+- pubmed.ncbi.nlm.nih.gov/41243956
+- pubmed.ncbi.nlm.nih.gov/41255572
+- pubmed.ncbi.nlm.nih.gov/41296545
+- pubmed.ncbi.nlm.nih.gov/41299571
+- pubmed.ncbi.nlm.nih.gov/41331063
+- pubmed.ncbi.nlm.nih.gov/41360770
+- pubmed.ncbi.nlm.nih.gov/41404378
+- pubmed.ncbi.nlm.nih.gov/41436446
+- pubmed.ncbi.nlm.nih.gov/41473442
+- pubmed.ncbi.nlm.nih.gov/41485222
+- pubmed.ncbi.nlm.nih.gov/41487561
+- pubmed.ncbi.nlm.nih.gov/41498635
+- pubmed.ncbi.nlm.nih.gov/41511464
+- pubmed.ncbi.nlm.nih.gov/41526977
+- pubmed.ncbi.nlm.nih.gov/41529665
+- pubmed.ncbi.nlm.nih.gov/41565051
+- pubmed.ncbi.nlm.nih.gov/41565622
+- pubmed.ncbi.nlm.nih.gov/41567490
+- pubmed.ncbi.nlm.nih.gov/41570447
+- pubmed.ncbi.nlm.nih.gov/41576948
+- pubmed.ncbi.nlm.nih.gov/41605901
+- pubmed.ncbi.nlm.nih.gov/41610511
+- pubmed.ncbi.nlm.nih.gov/41621549
+- pubmed.ncbi.nlm.nih.gov/41637546
+- pubmed.ncbi.nlm.nih.gov/41639465
+- pubmed.ncbi.nlm.nih.gov/41689799
+- pubmed.ncbi.nlm.nih.gov/41701841
+- pubmed.ncbi.nlm.nih.gov/41714613
+- pubmed.ncbi.nlm.nih.gov/41732385
+- pubmed.ncbi.nlm.nih.gov/41735542
+- pubmed.ncbi.nlm.nih.gov/41747370
+- pubmed.ncbi.nlm.nih.gov/41760994
+- pubmed.ncbi.nlm.nih.gov/41781335
+- pubmed.ncbi.nlm.nih.gov/41859964
+- pubmed.ncbi.nlm.nih.gov/41870780
+- pubmed.ncbi.nlm.nih.gov/41872817
+- pubmed.ncbi.nlm.nih.gov/41885448
+- pubmed.ncbi.nlm.nih.gov/41915085
+- pubmed.ncbi.nlm.nih.gov/41927920
+- pubmed.ncbi.nlm.nih.gov/41929055
+- pubmed.ncbi.nlm.nih.gov/41963303
+- pubmed.ncbi.nlm.nih.gov/41996637
+- pubmed.ncbi.nlm.nih.gov/42026980
+- pubmed.ncbi.nlm.nih.gov/42036438
+- pubmed.ncbi.nlm.nih.gov/42048185
+- pubmed.ncbi.nlm.nih.gov/42131111
+- pubmed.ncbi.nlm.nih.gov/42143313
+- pubmed.ncbi.nlm.nih.gov/42159965
+- pubmed.ncbi.nlm.nih.gov/42195095
+- pubmed.ncbi.nlm.nih.gov/42202285
+- pubmed.ncbi.nlm.nih.gov/42226559
+- pubmed.ncbi.nlm.nih.gov/42237704
+- pubmed.ncbi.nlm.nih.gov/42242982
+- pubmed.ncbi.nlm.nih.gov/42282793
+- pubmed.ncbi.nlm.nih.gov/42327254
+- pubmed.ncbi.nlm.nih.gov/42393057
+- pubmed.ncbi.nlm.nih.gov/42437047
+- pubmed.ncbi.nlm.nih.gov/42465316
+- pubmed.ncbi.nlm.nih.gov/42500822
+- pubmed.ncbi.nlm.nih.gov/42526354
+- pubmed.ncbi.nlm.nih.gov/42539880
+- pubmed.ncbi.nlm.nih.gov/42591701
+- pubmed.ncbi.nlm.nih.gov/42612286
+- pubmed.ncbi.nlm.nih.gov/42613348
+- pubmed.ncbi.nlm.nih.gov/42620177
+- pubmed.ncbi.nlm.nih.gov/42642591
+- pubmed.ncbi.nlm.nih.gov/42653084
+- pubmed.ncbi.nlm.nih.gov/42696999
+- pubmed.ncbi.nlm.nih.gov/42699228
+- pubmed.ncbi.nlm.nih.gov/42754139
+- pubmed.ncbi.nlm.nih.gov/42764293
+- pubmed.ncbi.nlm.nih.gov/42827658
+- pubmed.ncbi.nlm.nih.gov/42838052
+- pubmed.ncbi.nlm.nih.gov/42898679
+- pubmed.ncbi.nlm.nih.gov/42958970
+- pubmed.ncbi.nlm.nih.gov/43033883
+- pubmed.ncbi.nlm.nih.gov/43074257
+- pure.knaw.nl/portal/en/publications/3c54d563-2c2e-4047-bec2-24b437d7340c
+- pure.qub.ac.uk/files/658341847/loss.pdf
+- raw.githubusercontent.com/brain-ninja/pancan_snatac_publication
+- raw.githubusercontent.com/chenmengpin/ccrcc_snrna_analysis
+- raw.githubusercontent.com/claraliu97/st_subclone_publication
+- raw.githubusercontent.com/ding-lab/ccrcc_sn_publication
+- raw.githubusercontent.com/ding-lab/ccrcc_snrna_analysis
+- raw.githubusercontent.com/ding-lab/cptac_pancan_signature_analysis
+- raw.githubusercontent.com/ding-lab/htan_brca_publication
+- raw.githubusercontent.com/ding-lab/immune_snatac
+- raw.githubusercontent.com/ding-lab/mcrc_publication
+- raw.githubusercontent.com/ding-lab/pancan_snatac_publication
+- raw.githubusercontent.com/ding-lab/pancancerxenium_script
+- raw.githubusercontent.com/ding-lab/st_subclone_publication
+- raw.githubusercontent.com/ding-lab/uchl1_publication
+- raw.githubusercontent.com/dmh-tanfu-git/st_subclone_publication
+- raw.githubusercontent.com/genomicsnx/ccrcc_snrna_analysis
+- raw.githubusercontent.com/gladelephant/2024_nature_dingli
+- raw.githubusercontent.com/hediatnani/pancan_snatac_publication
+- raw.githubusercontent.com/huizhong1993/ccrcc_sn_publication
+- raw.githubusercontent.com/jianguozhou3/ccrcc_snrna_analysis
+- raw.githubusercontent.com/nvterekhanova/ccrcc_sn_publication
+- raw.githubusercontent.com/nvterekhanova/ccrcc_snrna_analysis
+- raw.githubusercontent.com/nvterekhanova/pancan_snatac_publication
+- raw.githubusercontent.com/penguinmeow/ccrcc_snrna_analysis
+- raw.githubusercontent.com/ritatalu/htan_brca_publication
+- raw.githubusercontent.com/shengxinbaixiaosheng/st_subclone_publication
+- raw.githubusercontent.com/simoncmo/htan_brca_publication
+- raw.githubusercontent.com/sscien/pancan_snatac_publication
+- raw.githubusercontent.com/sukses24/pancan_snatac_publication
+- raw.githubusercontent.com/yigewu/ccrcc_snrna_analysis
+- raw.githubusercontent.com/zhenhua2020/st_subclone_publication
+- research.birmingham.ac.uk/en/publications/405c33b7-a481-421f-a54d-47605b1078b1
+- research.ed.ac.uk/en/publications/5a3196f0-877c-43aa-bc55-210d2fc6368d
+- researchprofiles.ku.dk/da/publications/9d9af043-8468-4bf0-9071-f338b91bbf9d
+- researchprofiles.ku.dk/da/publications/c5a01d24-8230-4d35-8d0a-c2e4754c053f
+- rs.3.rs-229922/v1
+- s41467-023-37211-7
+- s41467-023-38561-y
+- s41586-023-06682-5
+- s41586-024-08087-4
+- s41588-022-01157-1
+- s43018-024-00773-6
+- serval.unil.ch/notice/serval:bib_abf07f6b8113
+- serval.unil.ch/notice/serval:bib_b29aa6b6d436
+- zora.uzh.ch/handle/20.500.14742/212368
+- zora.uzh.ch/handle/20.500.14742/219781
+- zora.uzh.ch/handle/20.500.14742/245414
+title_contains:
+- A bibliometric analysis of advances in N6‐methyladenosine research in colorectal cancer
+- A comparative single-cell multi-omic atlas links intrinsic regulatory programs to microenvironmental signaling in pediatric brain tumors
+- A foundation model of transcription across human cell types
+- 'A hitchhiker''s guide to single‐cell epigenomics: Methods and applications for cancer research'
+- A prognostic neural epigenetic signature in high-grade glioma
+- A subset of Polycomb-targeted transcription factor genes become hypermethylated yet upregulated in colorectal cancer
+- A technical comparison of spatial transcriptomics platforms across six cancer types
+- A variant in long noncoding RNA NORSF affects granulosa cells response to transcription factor RFX7
+- Aberrant expression of collagen type X in solid tumor stroma is associated with EMT, immunosuppressive and pro-metastatic pathways, bone marrow stromal cell signatures, and poor survival prognosis
+- 'Acquired resistance in cancer: towards targeted therapeutic strategies'
+- Advances in Integrated Multi-omics Analysis for Drug-Target Identification
+- Advances in single-cell analysis, spatial profiling, and gene editing in cancer immunogenomics
+- 'Advancing Epigenetic Combination Therapy in Oncology: Multifunctional Nano-Drug Delivery Systems for Synergistic Efficacy and Precision Modulation'
+- Aflatoxin B1 induces subtle but coordinated histone modifications in Epstein-Barr virus infected and non-infected Burkitt lymphoma cells
+- 'AI4Loop: an Artificial Intelligence Framework Reveals Increased 3D Chromatin Interactions and Therapeutic Vulnerabilities across 12,000 Cancer Samples'
+- 'Association between Diagnostic History and Cancer Incidence within 5 Years: A Real-world Observational Analysis'
+- Atlas of Breast Cancer in Chinese Young Women Revealed by Single-cell RNA and ATAC Sequencing
+- Atlas-guided discovery of transcription factors for T cell programming
+- 'Author Correction: Epigenetic and transcriptomic characterization reveals progression markers and essential pathways in clear cell renal cell carcinoma'
+- 'Author response: Robust estimation of cancer and immune cell-type proportions from bulk tumor ATAC-Seq data'
+- 'Between Cluster Analysis: Supervised Dimensionality Reduction for Trajectory Inference'
+- Biomimetic 3D-Bioprinted organoids of thymic epithelial tumors for translational drug screening and biomarker identification
+- 'Biophysical and Biochemical Roles of Shear Stress on Endothelium: A Revisit and New Insights'
+- 'Cancer and aging: complex associations and therapeutic targets'
+- 'Cancer Cell Metastasis: From Molecular Mechanisms to Therapeutic Strategies'
+- Cancer, metastasis, and the epigenome
+- 'Cancer-immunity interface: coevolving genomic instability and cell states'
+- Capsaicin/silica-infused polygalacturonic acid/polyvinyl alcohol nano-matrix for enhanced wound healing in skin injuries
+- Cellular senescence in human liver under normal aging and cancer
+- 'cfDECOR: a novel approach for estimating cell type contributions to cfDNA based on chromatin accessibility patterns'
+- Characterizing heterogeneous cis-regulatory elements in gene regulatory programs associated with breast cancer
+- Charting the transcriptomic landscape of primary and metastatic cancers in relation to their origin and target normal tissues
+- Chromatin accessibility derived from cfDNA serves as a novel classification biomarker of glioma
+- Chromatin accessibility landscapes define stromal cell identities across tissues
+- Chromatin accessibility module identified by single-cell sequencing underlies the diagnosis and prognosis of hepatocellular carcinoma
+- Chromatin accessibility trajectories reveal pre-cancerous epigenetic priming and an acid-driven immunotherapy-resistant gastric cancer subtype
+- 'ChromFound: Towards A Universal Foundation Model for Single-Cell Chromatin Accessibility Data'
+- 'ChromFound: Towards A Universal Foundation Model for Single-Cell Chromatin Accessibiltiy Data'
+- 'Chronic Psychological Stress in Oncogenesis: Multisystem Crosstalk and Multimodal Interventions'
+- 'Cisformer: a scalable cross-modality generation framework for decoding transcriptional regulation at single-cell resolution'
+- 'Combining epigenetic modulation: the next step for HCC immunotherapy?'
+- Comparison of spatial transcriptomics technologies across six cancer types
+- Comprehensive analysis of the role of Caspases in glioma
+- Comprehensive pan-cancer analysis of KRT6A as a prognostic and immune biomarker
+- Computational development of mushroom-6-glucan/paclitaxel as a synergistic complementary medicine for breast cancer therapy
+- Conformational perturbations in serum protein biomarkers specific to hepatic metabolism upon interaction with polystyrene nano-spherules
+- Confounding factors in assessing the enriched expression of somatic mutant alleles in bulk tumor samples
+- 'Constitutional Epimutations: From Rare Events Toward Major Cancer Risk Factors?'
+- Coregulators determine androgen receptor activity in prostate cancer
+- 'CREsted: modeling genomic and synthetic cell-type-specific enhancers across tissues and species'
+- 'CSI-GEP: A GPU-based unsupervised machine learning approach for recovering gene expression programs in atlas-scale single-cell RNA-seq data'
+- Dark proteome and emerging technologies for functional characterization and drug discovery
+- Debates and progress in the management of intermediate-stage (BCLC stage B) hepatocellular carcinoma
+- 'DECA: harnessing interpretable transformer model for cellular deconvolution of chromatin accessibility profile'
+- Defining heterogeneity in core regulatory circuitry reveals HOXB3 condensation as a potential target in glioblastoma
+- Defining the regulatory logic of breast cancer using single-cell epigenetic and transcriptome profiling
+- Dehydrogenase-like stacked MoS 2 nanozymes for cancer treatment through disrupting the tricarboxylic acid cycle
+- Descriptor-guided Clustering and Structure-based Identification of Raloxifene as a Non-Nucleoside DNMT1 Inhibitor
+- Developmentally constrained plasticity as a therapeutic vulnerability in cancer
+- Differential chromatin accessibility and transcriptional dynamics define breast cancer subtypes and their lineages
+- Dissecting Multi-Scale Molecular Signatures in High-Grade Glioma Using Spatiotemporally Integrated Multi-Modal Omics
+- 'DNA Methylation as a Programmable Information Layer: From Molecular Marks to Disease State Engineering'
+- 'DNA methylation biomarkers for the diagnosis and treatment management of breast cancer: where are we now?'
+- 'Drug resistance and tumor heterogeneity: cells and ensembles'
+- 'Dysregulated microRNAs in type 2 diabetes and breast cancer: Potential associated molecular mechanisms'
+- 'Editorial: Artificial intelligence in multi-omics: advancing tumor metastasis prediction and mechanism analysis'
+- Effects of hypoxia on the heart of the juvenile four-finger threadfin (Eleutheronema tetradactylum) based on physiological indicators and transcriptome analysis
+- 'eLife Assessment: Robust estimation of cancer and immune cell-type proportions from bulk tumor ATAC-Seq data'
+- 'Emerging trends and converging evidence in tumor evolution: A comprehensive review'
+- Engineering FRET biosensor for H3K9 acetylation imaging in single living cells
+- Enhancer‐dependent gene regulation in space, time, and malignancies
+- 'Environmental epigenetics: new horizons in redefining biological and health outcomes'
+- EPHB2 drives EMT-linked vasculogenic mimicry and cervical cancer progression via an ERK–ETV4 transcriptional program
+- 'EpiAgent: foundation model for single-cell epigenomics'
+- Epigenetic activation of VEGFA by SMARCD1 mediates tumor progression and bevacizumab resistance in clear cell renal cell carcinoma
+- 'Epigenetic and ncRNA Regulation of CBX2 in Liver Hepatocellular Carcinoma: A Comprehensive Multi-Omics Analysis for Understanding Biological Significance'
+- Epigenetic and transcriptomic characterization reveals progression markers and essential pathways in clear cell renal cell carcinoma
+- Epigenetic heterogeneity and plasticity in therapy‐induced tumor states through single‐cell multi‐omics
+- Epigenetic insights into minimal residual disease detection in cancer
+- 'Epigenetic mechanisms in HCC immune landscape: Therapeutic implications'
+- Epigenetic regulation during cancer transitions across 11 tumour types
+- Epigenetic regulation of cancer stemness
+- Epigenetic regulation of ferroptosis in gastrointestinal cancers (Review)
+- 'Epigenetic Reprogramming of the Tumor Microenvironment: An Evidence-Graded Framework from Cell States to Clinical Translation'
+- 'Epigenetic-targeted nanomedicine in cancer: from molecular mechanisms to therapeutic revolution'
+- Epigenetically-controlled CEBPB regulates kidney cancer tumorigenesis via GPD1L-mediated ether lipid synthesis
+- Epigenomic Echoes—Decoding Genomic and Epigenetic Instability to Distinguish Lung Cancer Types and Predict Relapse
+- Epigenomic heterogeneity as a source of tumour evolution
+- 'Epiregulon: Single-cell transcription factor activity inference to predict drug response and drivers of cell states'
+- 'EpiZoo: a DNA sequence-aware foundation model for cross-species single-cell epigenomics'
+- Erigoster B targeting DECR1 induces ferroptosis of breast cancer cells via promoting phosphatidylcholine/arachidonic acid metabolism
+- Evaluating agentic AI for biological discovery in autonomous and copilot settings
+- 'Evidence of Epigenetic Oncogenesis: A Turning Point in Cancer Research'
+- Evolution of the MUC1 gene in eutherian mammals as an adaptation responsible for the increasing incidence of cancer in humans
+- 'EWAS Open Platform 2026: a deeply integrated resource for epigenome-wide association studies'
+- 'Exploring Chromoanagenesis with DAFCA (Dam Assisted Fluorescent Tagging of Chromatin Accessibility): Integrating Chromatin Accessibility and Optical Genome Mapping for Enhanced Structural Variant Detection'
+- Exploring the Cancer Immune Epigenome by ATAC-Seq
+- Exploring the role of epigenetic regulation in cancer prognosis with epigenetic score
+- Expression and role of methyltransferase 3 in oral malignant transformation
+- Expression landscape of epigenetic genes in human hepatocellular carcinoma
+- Fluctuating environment causes neoplastic transition and epithelial-mesenchymal plasticity in human cells
+- 'From survival of irradiated mice to modern molecular insights: a seventy-year journey in radiobiology at the institute of biophysics, Czech academy of sciences'
+- Functional annotation of breast cancer risk loci implicates perturbation of FILIP1L expression in mammary fibroblasts in influencing breast cancer risk
+- Generation of a comprehensive epigenomic atlas in clear cell renal cell carcinoma informs kidney cancer progression and heritability
+- Genome-scale models in human metabologenomics
+- Glioblastoma Tumors with Decelerated Epigenetic Aging Are Characterized by Glutamatergic Neuronal Activity and Stemness
+- GLIS3 marks a neural-like progenitor cell state that drives metastasis in pancreatic ductal adenocarcinoma
+- GNG12 overexpression inhibits triple-negative breast cancer cell proliferation, migration, and invasion
+- 'HemaCisDB: An Interactive Database for Analyzing Cis -regulatory Elements Across Hematopoietic Malignancies'
+- 'HER2 and Epigenetic Modifications in Tumorigenesis: Mechanisms and Therapeutic Implications'
+- Hierarchical classification of immune cell transcriptomes at population-scale
+- HIF sustain a transcriptional regulatory circuit of EPAS1 expression in renal clear cell carcinoma
+- High-Efficiency Genomic Mapping of Chromatin-Associated Targets with CUT&RUN
+- 'Human-scATAC-Corpus: a comprehensive database of scATAC-seq data'
+- Hypoxia-induced epigenetic regulation of breast cancer progression and the tumour microenvironment
+- Identification and validation of a 9-RBPs-related gene signature associated with prognosis and immune infiltration in bladder cancer based on bioinformatics analysis and machine learning
+- Identification of cancer mini-drivers by deciphering selective landscape in the cancer genome
+- Identification of key targets and exploration of therapeutic molecular mechanisms of natural compound tangeretin in osteosarcoma
+- Identification, functional insights and therapeutic targeting of EMT tumour states
+- Identifying fate-determining transcription factors with single-cell omics
+- IMAS resolves perturbation-sensitive regulatory architectures from matched tumour multiomics
+- In silico RNA isoform screening to identify potential cancer driver exons with therapeutic applications
+- 'Indoles—A Targeting the PI3K/Akt/mTOR Pathway: Recent Advances in Strategic Design, Mechanism, and Future Perspectives'
+- Inferring tumor absolute copy number and clonal substructure from single-cell chromatin accessibility
+- Inferring tumour microenvironment ecosystems from scRNA-seq atlases
+- Integrated transcriptomic analysis reveals KRAS-associated gene activation and epigenetic regulation in mutant IDH1 glioma
+- Integrating Hypoxia Signatures from scRNA-seq and Bulk Transcriptomes for Prognosis Prediction and Precision Therapy in Cervical Squamous Cell Carcinoma and Endocervical Adenocarcinoma
+- Integration of single-cell transcriptome and chromatin accessibility and its application on tumor investigation
+- Integrative clinico-molecular analysis reveals actionable subtypes and biomarkers in lung adenocarcinoma
+- Integrative pan-cancer analysis reveals a common architecture of dysregulated transcriptional networks characterized by loss of enhancer methylation
+- 'iSHARC: Integrating scMultiome data for heterogeneity and regulatory analysis in cancer'
+- Joint analysis of chromatin accessibility and gene expression in the same single cells reveals cancer-specific regulatory programs
+- Label-free active single-cell encapsulation enabled by microvalve-based on-demand droplet generation and real-time image processing
+- 'Living therapeutics: Colorectal related diseases precision therapy with engineered organisms'
+- Loss of colonic fidelity enables multilineage plasticity and metastasis
+- Machine learning and multi-omics characterization of SLC2A1 as a prognostic factor in hepatocellular carcinoma
+- Machine learning-based identification of m6A-regulated lncRNA AC022509.1 as a key modulator of EMT in breast cancer
+- Mapping cancer gene dynamics through state-specific interactions
+- Mapping Disease Transitions from Premalignant, Asymptomatic to Advanced Myeloma through Integrative Epigenomic and Transcriptional Analyses
+- MARVELD1 inhibits Neuro2a cell migration and tumorigenesis via regulating the transcriptional coactivators and protein methylation
+- Memristive singular value decomposition
+- 'MetDecode: methylation-based deconvolution of cell-free DNA for noninvasive multi-cancer typing'
+- METTL3 enhances esophageal squamous cell carcinoma progression by suppressing ferroptosis through the PBX3/CA9 cascade
+- Multi-omic profiling identifies malignant subpopulations and a hypoxia-driven angiogenic axis as therapeutic vulnerabilities in sinonasal squamous cell carcinoma
+- Multi-omics elucidation of KDM5C, KDM6A, and KMT2B roles in cancer epigenetic dysregulation and transcriptional reprogramming
+- 'Multi-Omics Meets Premalignancy: Paving the Way for Early Prevention of Cancer'
+- Multi-scale signaling and tumor evolution in high-grade gliomas
+- Multimodal foundation model predicts zero-shot functional perturbations and cell fate dynamics
+- Multiomic profiling of glioblastoma metabolic lesions reveals complex intratumoral genomic evolution and dipeptidase-1-driven vascular proliferation
+- 'Myeloid-driven immunosuppression in head and neck cancer: single-cell ATAC/RNA and spatial transcriptomic perspectives'
+- NSUN2–tRNAVal−CAC-axis-regulated codon-biased translation drives triple-negative breast cancer glycolysis and progression
+- 'Organoids glimpse: the nexus for diverse tumor heterogeneity'
+- 'Origin, Evolution, and Regulation of Cancer Genes: An Overview'
+- Pan-cancer analysis of ABCC1 as a potential prognostic and immunological biomarker
+- Pan-cancer landscape of cancer-testis genes revealed by single-cell and spatial transcriptomics
+- Patient-specific enhancers in genetically uniform leukemias
+- PBX3-HMGCR Axis Promotes Hepatocellular Carcinoma Progression Through Enhancing De Novo Cholesterol Biosynthesis
+- Perineural Invasion is a Poor Prognostic Factor for Sinonasal Squamous Cell Carcinoma
+- Pharmacoepigenetics of Chinese herbal components in cancer
+- Pharmacological activation of STAT1-GSDME pyroptotic circuitry reinforces epigenetic immunotherapy for hepatocellular carcinoma
+- Pharmacophore-based virtual screening, molecular docking, and molecular dynamics simulation for the identification of novel BRD4 (BD1) inhibitors
+- Polyploid cisplatin-resistant cancer cells have altered nuclear organization and epigenomic status
+- Precision Medicine Beyond Genomics
+- Predictive and Mechanistic Analysis of Dynamic 5-Node ceRNA Regulatory Network in Lung Adenocarcinoma
+- Programs, origins and immunomodulatory functions of myeloid cells in glioma
+- Prostate cancer cells converge to an inflammatory-like state upon metastatic dissemination
+- 'PROTACs in cancer therapy: targeted degradation of GPX4, PARP and epigenetic regulators'
+- Proteomic profiling identifies SMARCA1 as a stage-specific epigenetic regulator of colorectal cancer metastasis through MMP modulation
+- Recent advances in the discovery of anti-breast cancer agents based on dual-target inhibition strategies
+- Recent Progress of Epigenetic Reprogramming Biomedicine to Activate Immunotherapeutic Antitumor Effects
+- Repair of DNA double-strand breaks leaves heritable molecular scars that might shape aging trajectories and cancer risk
+- Research advances on signaling pathways regulating the polarization of tumor-associated macrophages in lung cancer microenvironment
+- Revealing cancer driver genes through integrative transcriptomic and epigenomic analyses with Moonlight
+- 'Review of: "Introduction to Evolutionary Cancer Cell Biology (ECCB) and Ancestral Cancer Genomics"'
+- 'Reviewer #1 (Public Review): Robust estimation of cancer and immune cell-type proportions from bulk tumor ATAC-Seq data'
+- Rewired chromatin structure and epigenetic gene dysregulation during HTLV ‐1 infection to leukemogenesis
+- Robust and generalizable CNV detection for single-cell sequencing assays
+- Robust estimation of cancer and immune cell-type proportions from bulk tumor ATAC-Seq data
+- 'scCancerExplorer: a comprehensive database for interactively exploring single-cell multi-omics data of human pan-cancer'
+- scCirclehunter delineates ecDNA-containing cells using single-cell ATAC-seq, with a focus on glioblastoma
+- Single Cell and Spatial Omics and Applications in Toxicology
+- Single cell sequencing revealed the mechanism of CRYAB in glioma and its diagnostic and prognostic value
+- Single cell spatial transcriptomics track the evolutionary hierarchy and microenvironment remodeling during breast carcinoma invasion
+- Single-cell assay for transposase-accessible chromatin sequencing of human clear cell renal cell carcinoma
+- Single-cell integration and multi-modal profiling reveals phenotypes and spatial organization of neutrophils in colorectal cancer
+- Single-cell multi-omics analysis reveals cancer regulatory elements of transcriptional programs and clinical implications
+- Single-cell multi-omics analysis reveals candidate therapeutic drugs and key transcription factor specifically for the mesenchymal subtype of glioblastoma
+- Single-Cell Multi-Omics Dissection of Malignant Evolutionary Mechanisms and Construction of a Prognostic Model for Clear Cell Renal Cell Carcinoma
+- 'Single-cell multi-omics in cancer immunotherapy: from tumor heterogeneity to personalized precision treatment'
+- Single-cell resolution of an open chromatin signature in persister tumor cells
+- Single-cell sequencing analysis reveals CHURC1 as a non-canonical oncoprotein governing goblet cell-driven colorectal tumorigenesis
+- 'Single-cell sequencing technology in renal cancer: insights into tumor biology and clinical application'
+- Single‐Nucleus Multi‐Omics Reveals Hypoxia‐Driven Angiogenic Programs and Their Epigenetic Control in Sinonasal Squamous Cell Carcinoma
+- Smart nanomaterials targeting spatially heterogeneous immunosuppressive niches to reverse ovarian cancer resistance and enhance immune checkpoint therapy
+- Spatially resolved genome-wide joint profiling of epigenome and transcriptome with spatial-ATAC-RNA-seq and spatial-CUT&Tag-RNA-seq
+- Spatially restricted drivers and transitional cell populations cooperate with the microenvironment in untreated and chemo-resistant pancreatic cancer
+- Spatially-resolved single cell atlas of liposarcoma reveals lineage hierarchies, immune niches, and regulatory circuits
+- 'Spatiotemporal Analysis of Molecular Continuity in Pathogenesis of Squamous Cell Carcinoma: From Normal Epithelium to Precancerous Lesions and Carcinoma'
+- Stability of epigenetic transgenerational inheritance of adult-onset disease and parturition abnormalities
+- SuperCell2.0 enables semi-supervised construction of multimodal metacell atlases
+- Systematic identification of cancer-type-specific drugs based on essential genes and validations in lung adenocarcinoma
+- Systemic genome-epigenome analysis captures a lineage-specific super-enhancer for MYB in gastrointestinal adenocarcinoma
+- TAF7 directly targets SAA1 to enhance triple-negative breast cancer metastasis via phosphorylating E-cadherin and N-cadherin
+- TAOK3 inhibition constrains invasion, potentiates paclitaxel, and reprograms the tumor microenvironment toward anti-tumor immunity in cervical cancer
+- TAOK3 marks an invasion‐competent epithelial subset in cervical cancer, and its inhibition restrains tumor growth, sensitizes to paclitaxel, and remodels the immune microenvironment
+- Targeting ELF3 with Biomimetic Nanotherapy Sensitizes PDAC to Gemcitabine via GSDME-mediated Pyroptosis
+- 'Targeting methionine metabolism in cancer: opportunities and challenges'
+- Targeting the epigenome and the integrated stress response to normalize colorectal cancer subclonal plasticity and progression
+- Targeting tumor transition windows
+- The epigenetic basis of hepatocellular carcinoma – mechanisms and potential directions for biomarkers and therapeutics
+- The Landscape and Function of Tissue-Biased Expressed Genes Across Human Cancers
+- The Role of FOXA1 in Human Normal Development and Its Functions in Sex Hormone-Related Cancers
+- The vulnerabilities of chemotherapy resistant pancreatic cancer revealed by organoids of pre- and post-neoadjuvant therapy
+- The Wild West of spike-in normalization
+- 'Thematic Shifts in Early-High-Impact Cancer Genomics and Diagnostics Research: A Bibliometric and Semantic Analysis'
+- Tissue mechanics in tumor heterogeneity and aggression
+- Tissue-derived extracellular matrix hydrogels instruct epigenetic adaptation in metastatic colonization
+- Transcriptome analysis reveals the potential role of neural factor EN1 for long-terms survival in estrogen receptor-independent breast cancer
+- Transient loss of Polycomb components induces an epigenetic cancer fate
+- 'Tumor initiation and early tumorigenesis: molecular mechanisms and interventional targets'
+- Tumour evolution and microenvironment interactions in 2D and 3D space
+- Tumour‐Derived Extracellular Vesicles Reprogramme Tumour‐Associated Macrophages Into Immunosuppressive Phenotype via NOD1 Signalling in Clear Cell Renal Cell Carcinoma
+- Ubiquitin-mediated degradation of ANP32A by Realgar licenses ferritinophagic ferroptosis in TNBC stem cells through an ATG5-dependent epigenetic program
+- Unannotated noncoding transcripts as a source of intratumor heterogeneity in malignant cell states
+- Uncovering dark matter in cancer by identifying epigenetic drivers
+- Validating raloxifene-mediated restoration of DNMT–TET epigenetic balance in breast and lung cancer
+- Visualization of the chromatin structure in intact nuclei of cancer cells using small-angle x-ray scattering
+- 'XYcellAtlas: a cell-type- and spatial-resolved pan-cancer atlas of sex-biased and Y chromosome loss-associated molecular signatures'
+- ZBTB12 promotes breast cancer progression through transcriptional activation of the DNMT3B/ALDH1A2 axis
+- ZNF395 Is a Hypoxia-Responsive Regulator of Mitochondrial Glutaminolysis in Clear Cell Renal Cell Carcinoma
+
+# --- Citing papers flagged by Claude as (likely) re-using the dataset (informational) ---
+# [likely] 10.1016/j.ccell.2025.12.003: Single-cell integration and multi-modal profiling reveals phenotypes and spatial organization of neutrophils in colorectal cancer
+# [likely] 10.1038/s41419-025-08060-7: Single-cell multi-omics analysis reveals cancer regulatory elements of transcriptional programs and clinical implications
+# [likely] 10.1038/s41421-025-00842-9: scCirclehunter delineates ecDNA-containing cells using single-cell ATAC-seq, with a focus on glioblastoma
+# [likely] 10.1038/s41592-025-02822-z: EpiAgent: foundation model for single-cell epigenomics
+# [likely] 10.1038/s41592-026-03057-2: CREsted: modeling genomic and synthetic cell-type-specific enhancers across tissues and species
+# [likely] 10.1093/bib/bbaf069: DECA: harnessing interpretable transformer model for cellular deconvolution of chromatin accessibility profile
+# [likely] 10.1093/bib/bbag265: Inferring tumor absolute copy number and clonal substructure from single-cell chromatin accessibility
+# [likely] 10.1093/nar/gkae1100: scCancerExplorer: a comprehensive database for interactively exploring single-cell multi-omics data of human pan-cancer
+# [likely] 10.1093/nar/gkaf1216: Human-scATAC-Corpus: a comprehensive database of scATAC-seq data
+# [likely] 10.1093/nar/gkag1065: XYcellAtlas: a cell-type- and spatial-resolved pan-cancer atlas of sex-biased and Y chromosome loss-associated molecular signatures
+# [likely] 10.1101/2024.12.19.629561: Multimodal foundation model predicts zero-shot functional perturbations and cell fate dynamics
+# [likely] 10.1186/s13059-025-03823-z: Cisformer: a scalable cross-modality generation framework for decoding transcriptional regulation at single-cell resolution
+# [likely] 10.1186/s13578-024-01332-3: Single-cell multi-omics analysis reveals candidate therapeutic drugs and key transcription factor specifically for the mesenchymal subtype of glioblas
+# [likely] 10.48550/arxiv.2505.12638: ChromFound: Towards A Universal Foundation Model for Single-Cell Chromatin Accessibility Data
+# [likely] 10.52202/085713-2584: ChromFound: Towards A Universal Foundation Model for Single-Cell Chromatin Accessibiltiy Data
+# [likely] 10.64898/2026.02.19.706848: SuperCell2.0 enables semi-supervised construction of multimodal metacell atlases
+# [likely] 10.64898/2026.04.09.717444: IMAS resolves perturbation-sensitive regulatory architectures from matched tumour multiomics
+# [yes] 10.64898/2026.06.04.729919: Evaluating agentic AI for biological discovery in autonomous and copilot settings
+# [likely] 10.64898/2026.06.04.730125: Single-Cell Multi-Omics Dissection of Malignant Evolutionary Mechanisms and Construction of a Prognostic Model for Clear Cell Renal Cell Carcinoma
+# [likely] 10.64898/2026.07.04.736128: TAOK3 inhibition constrains invasion, potentiates paclitaxel, and reprograms the tumor microenvironment toward anti-tumor immunity in cervical cancer
+# [likely] 10.64898/2026.08.29.747960: Glioblastoma Tumors with Decelerated Epigenetic Aging Are Characterized by Glutamatergic Neuronal Activity and Stemness
+# [likely] 10.64898/2026.09.24.754017: EpiZoo: a DNA sequence-aware foundation model for cross-species single-cell epigenomics
+# [likely] 10.7554/elife.94833.2: Robust estimation of cancer and immune cell-type proportions from bulk tumor ATAC-Seq data
