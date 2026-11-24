@@ -15,7 +15,8 @@ from pathlib import Path
 from src.hooks import pre_tool_call_hook, REASONING_FIELDS, RETRY_REASONING_FIELDS
 from src.logging_utils import log
 from src.wandb_utils import log_execution, log_plot
-from src.harness_guard import TerminationRequested, prepare_image_for_model, shape_tool_output
+from src.harness_guard import (TerminationRequested, prepare_image_for_model, redact_run_paths,
+                               shape_tool_output)
 
 # Arguments some models send that the harness drops on purpose (legacy).
 IGNORED_MODEL_ARGS = frozenset({"dataset"})
@@ -178,8 +179,11 @@ def execute_tool_call(tc, state, output_dir, token_info=None):
                      "(text-only configuration).")
     if notes:
         body = (body + "\n\n" if body else "") + "\n".join(notes)
+    # The model never sees the run directory's absolute path (it names the cohort/task);
+    # logs and steps.jsonl keep the original `body`.
     shaped, full_output_path = shape_tool_output(
-        body, output_dir, exec_id, getattr(state, "tool_output_max_chars", None))
+        redact_run_paths(body, output_dir), output_dir, exec_id,
+        getattr(state, "tool_output_max_chars", None))
     if full_output_path:
         log(f"   📄 Output {len(body):,} chars; full text saved to {full_output_path}")
 

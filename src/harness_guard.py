@@ -102,6 +102,30 @@ def time_limit(seconds: Optional[float]):
 DEFAULT_TOOL_OUTPUT_MAX_CHARS = 100_000  # ~25k tokens; well under any API limit
 
 
+def redact_run_paths(text: str, output_dir: Path) -> str:
+    """Rewrite paths under the run's output directory as paths relative to it.
+
+    The output directory path encodes the cohort and task
+    (output/<cancer>/<task>/run_...), so showing it to the model leaks the
+    answer of annotation tasks (e.g. "gbm" in every "Plot saved to: ..." line).
+    The worker's cwd is the output directory, so the relative paths still
+    resolve in agent code (subprocess and container modes).
+    """
+    if not text:
+        return text
+    out = Path(output_dir)
+    forms = {str(out), str(out.resolve())}
+    for base in (Path.cwd(), out):
+        try:
+            forms.add(os.path.relpath(out.resolve(), base.resolve()))
+        except ValueError:
+            pass
+    forms.discard(".")
+    for form in sorted(forms, key=len, reverse=True):
+        text = text.replace(form + os.sep, "").replace(form, ".")
+    return text
+
+
 def shape_tool_output(text: str, output_dir: Path, exec_id: Any,
                       max_chars: Optional[int] = DEFAULT_TOOL_OUTPUT_MAX_CHARS) -> tuple[str, Optional[str]]:
     """Return (text_for_model, full_output_path_or_None).
@@ -127,7 +151,8 @@ def shape_tool_output(text: str, output_dir: Path, exec_id: Any,
     shaped = (
         text[:head]
         + f"\n\n[... OUTPUT TRUNCATED: {omitted:,} of {len(text):,} characters omitted. "
-          f"Full output saved to {full_path} (read it with run_python_repl if needed) ...]\n\n"
+          f"Full output saved to {full_path.relative_to(Path(output_dir))} "
+          f"(read it with run_python_repl if needed) ...]\n\n"
         + text[-tail:]
     )
     return shaped, str(full_path)
