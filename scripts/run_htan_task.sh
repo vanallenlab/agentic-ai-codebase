@@ -21,7 +21,7 @@ set -euo pipefail
 
 REPO=/home/sjohri/agentic-ai-codebase
 CONFIG=${1:-config/htan/opus-4-6/cesc/molecular_pik3ca.yaml}
-IMAGE=ghcr.io/vanallenlab/agentic-sc-runtime:v2
+IMAGE=ghcr.io/vanallenlab/agentic-sc-runtime:v3
 DATA_MNT=/home/sjohri/htan-disk-mt
 RUNS=/home/sjohri/agent-runs
 cd "$REPO"

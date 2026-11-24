@@ -15,7 +15,7 @@
 #   withheld (database tools such as query_geo do not filter by themselves).
 # - Tools that reach HTAN releases (Synapse) or TCGA endpoint data (cBioPortal) are not offered, nor
 #   advanced_web_search_claude: it reads pages server-side, so its answers cannot be filtered.
-# - /app of the runtime image (build files, registry credentials) is hidden from the worker.
+# - /app is hidden from the worker (v2 kept build files and registry credentials there; v3 has no /app).
 leakage_guard: true
 anonymous_run_dir: true
 anonymous_run_root: output/runs
@@ -25,7 +25,7 @@ execution:
   mode: container
   container:
     runtime: docker
-    image: ghcr.io/vanallenlab/agentic-sc-runtime:v2
+    image: ghcr.io/vanallenlab/agentic-sc-runtime:v3   # built from docker/runtime/ (tested with every HTAN tool)
     mount: code
     mask_paths: [/app]
     network: false
