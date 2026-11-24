@@ -15,6 +15,6 @@ llm:
   model: claude-opus-4-6
 logging:
   enabled: true
-  project: agentic-ai-htan
+  project: agentic-ai-htan-v2
   entity: vanallenlab-agentic-ai
   run_name: null  # auto-generated if null
