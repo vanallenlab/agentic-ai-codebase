@@ -107,7 +107,7 @@ def redact_run_paths(text: str, output_dir: Path) -> str:
 
     The output directory path encodes the cohort and task
     (output/<cancer>/<task>/run_...), so showing it to the model leaks the
-    answer of annotation tasks (e.g. "gbm" in every "Plot saved to: ..." line).
+    answer of annotation tasks (it appears in every "Plot saved to: ..." line).
     The worker's cwd is the output directory, so the relative paths still
     resolve in agent code (subprocess and container modes).
     """

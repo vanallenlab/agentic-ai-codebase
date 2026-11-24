@@ -6,6 +6,7 @@ import json
 import os
 import random
 import sys
+import uuid
 from datetime import datetime
 from pathlib import Path
 import numpy as np
@@ -17,7 +18,8 @@ import wandb
 import weave
 
 from src.tool_registry import get_tools, list_categories
-from src.config import load_config, MODEL_CONTEXT_LIMITS
+from src.config import (load_config, MODEL_CONTEXT_LIMITS, check_leakage_guard,
+                        resolve_literature_blacklist)
 from src.llm_client import create_llm_client_from_config, RequestTooLargeError
 from src.logging_utils import logger, log
 from src.interactive import interactive_prompt, handle_user_question, prompt_for_continuation
@@ -83,7 +85,7 @@ def init_services(config: dict, task: str, user_name: str = None):
     return wandb_run
 
 
-def load_tools(tool_category: str, provider: str = "openai") -> list:
+def load_tools(tool_category: str, provider: str = "openai", exclude_tools=None) -> list:
     """Load and format tools for a specific LLM provider.
 
     Tools are loaded from three sources:
@@ -123,6 +125,11 @@ def load_tools(tool_category: str, provider: str = "openai") -> list:
     for t in get_tools("external_support_tools", provider=provider):
         if t["name"] in ("run_python_repl", "run_terminal"):
             _add_tool(t)
+
+    # 4. Config `exclude_tools`: never offered to the model (unknown-tool calls are rejected)
+    if exclude_tools:
+        excluded = set(exclude_tools)
+        tools = [t for t in tools if t["name"] not in excluded]
 
     return tools
 
@@ -245,8 +252,22 @@ def run_agent(config_path: str, user_name: str = None):
     interactive = config.get("interactive", False)
     capture_telemetry = config.get("capture_telemetry", True)
     checkpoint_data = config.get("checkpoint_data", True)
+    literature_blacklist = resolve_literature_blacklist(config)
+    check_leakage_guard(config, literature_blacklist)
     # Setup output directory (absolute, so agent code changing cwd can't redirect writes)
-    if output_dir is None:
+    if output_dir is None and config.get("anonymous_run_dir"):
+        # The worker's cwd is the run directory, so its path must not name the cohort or task:
+        # runs live in <anonymous_run_root>/<random id>; output_base_dir gets a pointer file.
+        run_id = uuid.uuid4().hex[:12]
+        output_dir = Path(config.get("anonymous_run_root", "output/runs")) / run_id
+        pointer_dir = Path(output_base_dir) / (user_name or "")
+        pointer_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        (pointer_dir / f"run_{stamp}_{run_id}.json").write_text(json.dumps({
+            "run_dir": str(output_dir.resolve()), "run_id": run_id, "config": str(config_path),
+            "task_file": str(task_file), "started": datetime.now().isoformat(timespec="seconds"),
+        }, indent=1) + "\n")
+    elif output_dir is None:
         base_dir = Path(output_base_dir)
         run_folder = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         if user_name:
@@ -279,7 +300,8 @@ def run_agent(config_path: str, user_name: str = None):
             context_limit = 128_000
         log(f"⚠️ Model '{model}' not in MODEL_CONTEXT_LIMITS, using default: {context_limit:,}")
 
-    literature_blacklist = config.get("literature_blacklist")
+    if literature_blacklist:
+        log("📚 Literature blacklist: " + ", ".join(f"{len(v)} {k}" for k, v in literature_blacklist.items()))
     state = AgentState(
         output_dir=output_dir,
         task=task,
@@ -337,7 +359,10 @@ def run_agent(config_path: str, user_name: str = None):
             log(f"⚠️ wandb config update failed: {e}")
 
     # Load tools
-    tools = load_tools(tool_category, provider=state.client.provider)
+    tools = load_tools(tool_category, provider=state.client.provider,
+                       exclude_tools=config.get("exclude_tools"))
+    if config.get("exclude_tools"):
+        log(f"🚫 Tools excluded by config: {', '.join(config['exclude_tools'])}")
     state.tool_schemas = {t["name"]: (t.get("input_schema") or t.get("parameters") or {}) for t in tools}
     log(f"🧬 {len(tools)} tools loaded | Reasoning: {reasoning_effort}" +
         (" | 🎯 Interactive" if interactive else "") + "\n")

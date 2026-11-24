@@ -110,17 +110,78 @@ class InProcessClient(_BaseClient):
         self.alive = False
 
 
+def _backed_component_paths(path: str) -> list[str]:
+    """Per-sample files a SnapATAC2 AnnDataSet (backed scATAC object) points to.
+
+    They are opened by path when the dataset is read, so they must be mounted
+    alongside the dataset file itself."""
+    try:
+        import h5py
+        with h5py.File(path, "r") as f:
+            if "uns/AnnDataSet/file_path" not in f:
+                return []
+            rel = [x.decode() if isinstance(x, bytes) else str(x) for x in f["uns/AnnDataSet/file_path"][:]]
+    except Exception as e:  # noqa: BLE001 - not an AnnDataSet / unreadable: nothing extra to mount
+        log(f"⚠️ could not read component paths of {path}: {e}")
+        return []
+    base = Path(path).parent
+    return [str((base / p).resolve()) if not os.path.isabs(p) else str(Path(p).resolve()) for p in rel]
+
+
+_BLOCKED_HOSTS = ("169.254.169.254", "metadata.google.internal", "metadata.goog")
+
+
+def _blacklist_terms(blacklist) -> list[str]:
+    """Lowercase substrings that mark a result as coming from a blacklisted source."""
+    if not blacklist:
+        return []
+    terms = set()
+    for key in ("dois", "urls", "title_contains", "pmcids", "pmcid"):
+        for v in blacklist.get(key) or []:
+            v = str(v).strip().lower()
+            for prefix in ("https://", "http://", "www."):
+                if v.startswith(prefix):
+                    v = v[len(prefix):]
+            if len(v) >= 8:  # never match on short fragments
+                terms.add(v)
+    for v in blacklist.get("pmids") or []:
+        v = str(v).strip()
+        if len(v) >= 7:
+            terms.add(v)
+    return sorted(terms, key=len, reverse=True)
+
+
+def _first_blacklist_hit(text: str, terms: list[str]):
+    if not text or not terms:
+        return None
+    low = text.lower()
+    for t in terms:
+        if t in low:
+            return t
+    return None
+
+
 class WorkerClient(_BaseClient):
     def __init__(self, init_payload: dict, output_dir: Path, repo_dir: Path, mode: str = "subprocess",
                  tool_timeout_s=None, hard_timeout_grace_s: float = 120.0, container: dict = None,
-                 memory_limit_gb=None, agent_code_llm_keys: bool = False):
+                 memory_limit_gb=None, agent_code_llm_keys: bool = False,
+                 harness_tools: frozenset = frozenset()):
         super().__init__(init_payload, output_dir, tool_timeout_s)
         self.agent_code_llm_keys = bool(agent_code_llm_keys)
         self.repo_dir = Path(repo_dir).resolve()
         self.mode = mode
         self.grace = float(hard_timeout_grace_s)
         self.container = container or {}
+        # container mode: "code" mounts only <repo>/src (no configs, tasks, outputs, data or .git);
+        # "repo" mounts the whole repository read-only (old behaviour)
+        self.mount = self.container.get("mount", "code")
+        if self.mount not in ("code", "repo"):
+            raise ValueError(f"execution.container.mount must be code | repo, got {self.mount!r}")
         self.memory_limit_gb = memory_limit_gb
+        # Tools executed in the harness process instead of the worker (network tools when the
+        # worker has no network). They never run agent-written code and never touch the data.
+        self.harness_tools = frozenset(harness_tools)
+        self._harness_runtime = None
         self.proc: Optional[subprocess.Popen] = None
         self.container_name: Optional[str] = None
         self._busy = False
@@ -154,28 +215,86 @@ class WorkerClient(_BaseClient):
             cmd += ["--network", "none"]
         if c.get("gpus"):
             cmd += ["--gpus", str(c["gpus"])]
-        # Same absolute paths inside and outside the container, so every path
-        # (outputs, plots, checkpoints) means the same thing on both sides.
-        cmd += ["-v", f"{self.repo_dir}:{self.repo_dir}:ro"]
+        # Image paths the agent must not read (e.g. build material and credentials baked into
+        # the image): an empty read-only tmpfs is mounted over each.
+        for p in c.get("mask_paths") or []:
+            cmd += ["--tmpfs", f"{p}:ro,size=1k"]
+        # Code and the output dir keep their absolute paths inside the container, so outputs,
+        # plots and checkpoints mean the same thing on both sides. Inputs are mounted at
+        # neutral paths under /inputs (see _input_mounts): their host paths name the cohort.
+        cmd += ["-v", f"{self._code_mount()}:{self._code_mount()}:ro"]
         cmd += ["-v", f"{self.output_dir}:{self.output_dir}:rw", "-w", str(self.output_dir)]
-        for p in self._input_paths():
-            cmd += ["-v", f"{p}:{p}:ro"]
+        for host, ctr in self._input_mounts()[0]:
+            cmd += ["-v", f"{host}:{ctr}:ro"]
         cmd += [c.get("image", DEFAULT_IMAGE), "python", worker_script]
         return cmd
 
-    def _input_paths(self) -> list[str]:
+    def _code_mount(self) -> Path:
+        return self.repo_dir / "src" if self.mount == "code" else self.repo_dir
+
+    # neutral in-container names per input key
+    _INPUT_NAMES = {
+        "scrna_data_path": "scrna", "scatac_data_path": "scatac",
+        "scatac_snap_path": "scatac_backed/scatac_backed", "data_dir": "data_dir",
+        "cnmf_usage_path": "cnmf_usage", "cnmf_spectra_scores_path": "cnmf_spectra_scores",
+        "cnmf_top_genes_path": "cnmf_top_genes",
+    }
+
+    def _input_mounts(self) -> tuple[list[tuple[str, str]], dict]:
+        """(host -> container mounts, data paths as the worker sees them).
+
+        Only the input files themselves are mounted (resolved, so a symlink into the repo
+        points at the real data), plus the per-sample files of a backed scATAC dataset at
+        the same relative location. Nothing else of the data disk is visible."""
         data = self.init_payload.get("data", {}) or {}
-        paths = sorted({str(Path(v).resolve()) for v in data.values() if v})
-        out_s = str(self.output_dir)
-        # Skip paths already covered by another mount (or by the output dir)
-        kept = []
-        for p in paths:
-            if p.startswith(out_s + os.sep) or p.startswith(str(self.repo_dir) + os.sep):
+        mounts, worker_data = [], {}
+        for key, host in data.items():
+            if not host:
                 continue
-            if any(p.startswith(k + os.sep) for k in kept):
-                continue
-            kept.append(p)
-        return kept
+            host = str(Path(host).resolve())
+            name = self._INPUT_NAMES.get(key, key)
+            ext = "" if Path(host).is_dir() else Path(host).suffix
+            ctr = f"/inputs/{name}{ext}"
+            mounts.append((host, ctr))
+            worker_data[key] = ctr
+            if key == "scatac_snap_path":
+                host_base, ctr_base = Path(host).parent, Path(ctr).parent
+                for comp in _backed_component_paths(host):
+                    try:
+                        rel = Path(comp).relative_to(host_base)
+                    except ValueError:
+                        raise WorkerFatal(f"backed scATAC component outside its dataset directory: {comp}")
+                    mounts.append((comp, str(ctr_base / rel)))
+        return mounts, worker_data
+
+    def _worker_init_payload(self) -> dict:
+        if self.mode != "container":
+            return self.init_payload
+        return dict(self.init_payload, data=self._input_mounts()[1])
+
+    def _call_in_harness(self, name: str, args: dict, exec_id) -> dict:
+        """Run a network tool (literature / database lookup) in the harness process."""
+        flat = repr(args).lower()
+        if any(h in flat for h in _BLOCKED_HOSTS):
+            return {"success": False, "body": "[harness] Requests to the cloud metadata server are not allowed.",
+                    "notes": [], "plots": [], "data_changes": "", "args_preview": args}
+        if self._harness_runtime is None:
+            from src.worker_runtime import ToolRuntime
+            rt = ToolRuntime()
+            rt.init(dict(self.init_payload, data={}, generation=0, checkpoints={},
+                         secrets={k: os.environ[k] for k in LLM_SECRET_VARS if os.environ.get(k)}))
+            self._harness_runtime = rt
+            self._blacklist_terms = _blacklist_terms(self.init_payload.get("literature_blacklist"))
+            log(f"🌐 Network tools run in the harness process: {', '.join(sorted(self.harness_tools))}")
+        resp = self._harness_runtime.call({"name": name, "args": args, "exec_id": exec_id})
+        # Database tools (e.g. GEO) do not apply the literature blacklist themselves; withhold any
+        # result that mentions a blacklisted work, accession, URL or title.
+        hit = _first_blacklist_hit(resp.get("body") or "", self._blacklist_terms)
+        if hit:
+            log(f"   🚫 {name} result withheld (matches blacklist entry {hit!r})")
+            resp = dict(resp, body=("[harness] This result was withheld: it refers to sources that are "
+                                    "excluded in this run. Use other sources."), plots=[])
+        return resp
 
     def _spawn(self):
         cmd = self._command()
@@ -234,7 +353,7 @@ class WorkerClient(_BaseClient):
     def start(self) -> dict:
         try:
             self._spawn()
-            payload = dict(self.init_payload, op="init", generation=self.generation,
+            payload = dict(self._worker_init_payload(), op="init", generation=self.generation,
                            checkpoints=self._checkpoint_paths() if self.generation else {},
                            secrets={k: os.environ[k] for k in LLM_SECRET_VARS if os.environ.get(k)})
             resp = self._request(payload, timeout=None)
@@ -261,6 +380,8 @@ class WorkerClient(_BaseClient):
         return "A new execution environment was started and the data was reloaded from the original inputs."
 
     def call(self, name: str, args: dict, exec_id) -> dict:
+        if name in self.harness_tools:
+            return self._call_in_harness(name, args, exec_id)
         timeout = (float(self.tool_timeout_s) + self.grace) if self.tool_timeout_s else None
         try:
             resp = self._request({"op": "call", "name": name, "args": args, "exec_id": exec_id}, timeout)
@@ -353,10 +474,26 @@ def make_runtime_client(config: dict, init_payload: dict, output_dir: Path, repo
         return InProcessClient(init_payload, output_dir, tool_timeout_s)
     if mode not in ("subprocess", "container"):
         raise ValueError(f"execution.mode must be subprocess | container | inprocess, got {mode!r}")
+    container = ex.get("container", {}) or {}
+    harness_tools = frozenset()
+    # No network in the worker: literature/database tools (fixed code, no data access) run in
+    # the harness instead, so agent-written code has no route to the internet.
+    if mode == "container" and container.get("network", True) is False \
+            and ex.get("network_tools_in_harness", True):
+        harness_tools = network_tool_names()
     return WorkerClient(
         init_payload, output_dir, repo_dir, mode=mode, tool_timeout_s=tool_timeout_s,
         hard_timeout_grace_s=ex.get("hard_timeout_grace_s", 120),
-        container=ex.get("container", {}),
+        container=container,
         memory_limit_gb=ex.get("memory_limit_gb"),
         agent_code_llm_keys=ex.get("agent_code_llm_keys", False),
+        harness_tools=harness_tools,
     )
+
+
+NETWORK_TOOL_CATEGORIES = ("external_literature", "external_database")
+
+
+def network_tool_names() -> frozenset:
+    from src.tool_registry import get_tools
+    return frozenset(t["name"] for cat in NETWORK_TOOL_CATEGORIES for t in get_tools(cat))
