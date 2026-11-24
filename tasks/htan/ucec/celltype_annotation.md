@@ -12,7 +12,7 @@ Three data objects are pre-loaded and available to all tools:
 
 ---
 
-### Analysis Goals: Cell-Type Annotation (BRCA)
+### Analysis Goals: Cell-Type Annotation (UCEC)
 
 1. Identify major cell types present in the dataset (e.g., tumor/epithelial, immune, endothelial, fibroblast/stromal).
 2. Annotate every cell in `adata_rna` with a broad cell-type label.
