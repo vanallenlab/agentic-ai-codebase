@@ -214,3 +214,6 @@ old/
 wandb/
 debug/
 config_test/
+
+# HTAN data disk mount point (data lives outside git)
+data/datasets-mt/
