@@ -78,7 +78,10 @@ TECH_ORIG = "in addition to scRNA, scATAC and scMultiome tools."
 TECH = {"rna": "in addition to scRNA tools.", "atac": "in addition to scATAC tools."}
 PAIRING = (" scATAC cells maybe be strict subset of scRNA cells (same barcodes/labels where present) "
            "when paired sequencing was performed, else different barcodes.")
-NUMBER = {1: "One data object is", 2: "Two data objects are", 3: "Three data objects are"}
+NUMBER = {1: "One data object is", 2: "Two data objects are", 3: "Three data objects are",
+          4: "Four data objects are", 5: "Five data objects are", 6: "Six data objects are"}
+CNMF_ROUTING = (" The cNMF tables (`usage_df`, `spectra_scores_df`, `top_genes_df`) are passed to the tools "
+                "that take them, and are available in `run_python_repl` by the same names.")
 
 
 PLOTS_RX = r"Support claims with (single-panel )?plots or statistics\."
@@ -139,7 +142,11 @@ def rewrite(text: str, modality: str) -> str:
                  r"\1 Cell barcodes come from the scRNA assay; they match `adata_atac` barcodes where paired "
                  r"sequencing was performed.", count_expected=None)
 
-    t = _sub(t, r"^(Three|Two) data objects are pre-loaded", NUMBER[n_objects] + " pre-loaded", flags=re.M)
+    # Count every object still listed (AnnData objects and cNMF tables alike)
+    n_objects = len(re.findall(r"^- \*\*`[A-Za-z_]+`\*\* — ", t.split("### Analysis Goals")[0], flags=re.M))
+    if "`usage_df`" in t:
+        routing += CNMF_ROUTING
+    t = _sub(t, r"^\w+ data objects? (?:are|is) pre-loaded", NUMBER[n_objects] + " pre-loaded", flags=re.M)
     t = _sub(t, r"^\*\*Data routing:\*\*.*$", routing, flags=re.M)
     _check_leftovers(t, modality)
     return t
