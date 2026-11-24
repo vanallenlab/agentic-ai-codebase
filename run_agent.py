@@ -187,6 +187,7 @@ def run_agent(config_path: str, user_name: str = None):
         tool_output_max_chars: 100000 # larger outputs: head+tail to model, full text to disk
         track_data_changes: true      # detect/report changes to shared data per call
         checkpoint_data: true         # write modified data to output/checkpoints after each step
+        rollback_on_failure: true     # a FAILED call's changes to shared data are undone (reloaded from the last checkpoint)
         seed: 0                       # python/numpy seed; null = don't seed
         llm.max_tokens / llm.thinking / llm.effort / llm.max_retries /
         llm.retry_total_seconds / llm.max_images_per_request
@@ -314,6 +315,7 @@ def run_agent(config_path: str, user_name: str = None):
         "literature_blacklist": literature_blacklist,
         "tool_timeout_s": state.tool_timeout_s,
         "track_data_changes": state.track_data_changes,
+        "rollback_on_failure": bool(config.get("rollback_on_failure", True)),
         "seed": config.get("seed", 0),
     }
     state.runtime = make_runtime_client(config, init_payload, output_dir,

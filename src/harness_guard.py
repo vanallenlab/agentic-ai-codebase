@@ -221,6 +221,41 @@ def _frame_signature(df) -> Optional[str]:
             return repr(type(df))
 
 
+def _value_signature(v, _depth: int = 0):
+    """Exact content signature of an arbitrary .uns value (nested dicts/lists,
+    arrays incl. structured ones, DataFrames, scalars). Small, so hashed fully."""
+    import hashlib
+    import numpy as np
+    import pandas as pd
+    import scipy.sparse as sp
+    if _depth > 20:
+        return f"<depth>{type(v).__name__}"
+    try:
+        if v is None or isinstance(v, (bool, int, float, str, bytes, np.generic)):
+            return repr(v)
+        if isinstance(v, dict):
+            return {str(k): _value_signature(x, _depth + 1) for k, x in v.items()}
+        if isinstance(v, (list, tuple)):
+            return [_value_signature(x, _depth + 1) for x in v]
+        if isinstance(v, (pd.DataFrame, pd.Series)):
+            return _frame_signature(v.to_frame() if isinstance(v, pd.Series) else v)
+        if sp.issparse(v):
+            v = v.tocsr()
+            h = hashlib.blake2b(digest_size=16)
+            for part in (v.data, v.indices, v.indptr):
+                h.update(np.ascontiguousarray(part).tobytes())
+            return f"sparse{v.shape}|{v.dtype}|{h.hexdigest()}"
+        if isinstance(v, np.ndarray):
+            if v.dtype.hasobject:
+                data = repr(v.tolist()).encode()
+            else:
+                data = np.ascontiguousarray(v).tobytes()
+            return f"{v.shape}|{v.dtype}|{hashlib.blake2b(data, digest_size=16).hexdigest()}"
+        return f"{type(v).__name__}|{hashlib.blake2b(repr(v).encode(), digest_size=16).hexdigest()}"
+    except Exception as e:  # noqa: BLE001 - fingerprinting must never fail a call
+        return f"{type(v).__name__}|unhashable:{type(e).__name__}"
+
+
 def _anndata_fingerprint(ad) -> dict:
     fp = {"_id": id(ad)}
     try:
@@ -232,9 +267,11 @@ def _anndata_fingerprint(ad) -> dict:
         fp["var_columns"] = tuple(map(str, ad.var.columns))
         for attr in ("layers", "obsm", "varm", "obsp", "varp"):
             m = getattr(ad, attr, None)
-            fp[attr] = {str(k): _matrix_signature(m[k]) if attr == "layers" else
-                        tuple(getattr(m[k], "shape", ())) for k in m.keys()} if m is not None else {}
+            fp[attr] = {str(k): (_frame_signature(m[k]) if hasattr(m[k], "columns")
+                                 else _matrix_signature(m[k]))
+                        for k in m.keys()} if m is not None else {}
         fp["uns_keys"] = tuple(sorted(map(str, ad.uns.keys())))
+        fp["uns"] = {str(k): _value_signature(v) for k, v in ad.uns.items()}
     except Exception as e:
         fp["error"] = f"{type(e).__name__}: {e}"
     return fp
@@ -295,6 +332,10 @@ def diff_fingerprints(before: dict, after: dict) -> dict[str, list[str]]:
                 items.append(f".uns keys added: {sorted(au - bu)}")
             if bu - au:
                 items.append(f".uns keys removed: {sorted(bu - au)}")
+            bv, av = b.get("uns", {}) or {}, a.get("uns", {}) or {}
+            uns_mod = sorted(k for k in set(bv) & set(av) if bv[k] != av[k])
+            if uns_mod:
+                items.append(f".uns modified: {uns_mod}")
             if "frame" in a and b.get("frame") != a.get("frame"):
                 items.append("values changed")
             if not items:

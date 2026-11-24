@@ -64,8 +64,10 @@ logging:
 ```yaml
 tool_timeout_s: 7200            # wall-clock limit per tool call (0/null = none)
 tool_output_max_chars: 100000   # larger outputs: head+tail to the model, full text in output/tool_outputs/
-track_data_changes: true        # detect changes to shared data per call; warn the model if a FAILED call modified data
+track_data_changes: true        # detect changes to shared data per call
 checkpoint_data: true           # after each step, write modified data to output/checkpoints/ (atomic)
+rollback_on_failure: true       # a FAILED call's changes to shared data are undone (reloaded from the last
+                                # checkpoint) and the model is told; needs the two options above
 seed: 0                         # python/numpy seed (null = don't seed)
 image_max_edge: 1568            # plots sent to the model are downscaled to the model's native resolution (disk copies untouched)
 llm:

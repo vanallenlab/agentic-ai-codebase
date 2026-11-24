@@ -204,6 +204,7 @@ def execute_tool_call(tc, state, output_dir, token_info=None):
             full_output_path=full_output_path or "",
             plots=plot_paths,
             worker_restarted=bool(resp.get("worker_restarted")),
+            rolled_back=bool(resp.get("rolled_back")),
         )
     _safe(_record, what="execution record")
     if state.execution_history:

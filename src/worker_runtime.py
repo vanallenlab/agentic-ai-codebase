@@ -71,7 +71,10 @@ class ToolRuntime:
         self.output_dir: Optional[Path] = None
         self.tool_timeout_s: Optional[float] = None
         self.track_data_changes = True
+        self.rollback_on_failure = True
         self.generation = 0
+        # attr -> on-disk copy of the slot as of the last checkpoint (None = slot was empty)
+        self.restore_sources: dict[str, Optional[str]] = {}
 
     # ------------------------------------------------------------------ init
     def init(self, req: dict) -> dict:
@@ -82,6 +85,7 @@ class ToolRuntime:
         self.output_dir = Path(req["output_dir"]).resolve()
         self.tool_timeout_s = req.get("tool_timeout_s") or None
         self.track_data_changes = req.get("track_data_changes", True)
+        self.rollback_on_failure = req.get("rollback_on_failure", True)
         self.generation = int(req.get("generation", 0))
         self.state.literature_blacklist = req.get("literature_blacklist")
 
@@ -134,6 +138,15 @@ class ToolRuntime:
             if path:
                 setattr(self.state, attr, pd.read_csv(path, index_col=0))
                 log(f"✓ Loaded {attr} from {path}: {getattr(self.state, attr).shape}")
+
+        # Where each slot's last saved state lives (used to roll back failed calls)
+        input_keys = {"adata_rna": "scrna_data_path", "adata_atac": "scatac_data_path",
+                      "adata_combined": None, "cnmf_usage_df": "cnmf_usage_path",
+                      "cnmf_spectra_scores_df": "cnmf_spectra_scores_path",
+                      "cnmf_top_genes_df": "cnmf_top_genes_path"}
+        self.restore_sources = {attr: (ckpt.get(attr) or (data.get(key) if key else None))
+                                for attr, key in input_keys.items()}
+        self.state.dirty_slots = set()
         return {"info": self.info()["info"]}
 
     def info(self, _req: dict = None) -> dict:
@@ -163,6 +176,7 @@ class ToolRuntime:
         log(f"    📥 Args: {args_preview}")
 
         before = _safe(fingerprint_state, st, what="data fingerprint") if self.track_data_changes else None
+        dirty_before = set(st.dirty_slots)
         figures_before = set(plt.get_fignums())
         result, error_text, notes, saved_plots = None, None, [], []
 
@@ -209,21 +223,38 @@ class ToolRuntime:
                 if Path(path).is_file():
                     saved_plots.append(path)
 
-        data_changes = {}
+        data_changes, rolled_back = {}, False
         if before is not None:
             after = _safe(fingerprint_state, st, what="data fingerprint")
             if after is not None:
                 data_changes = diff_fingerprints(before, after)
                 if data_changes:
-                    st.dirty_slots |= set(data_changes)
                     log(f"   🧬 Data changes: {format_changes(data_changes)}")
-                    if error_text is not None:
-                        notes.append(
-                            "[harness] WARNING: this call FAILED but had already modified shared data "
-                            f"before failing: {format_changes(data_changes)}. The data is now in a "
-                            "partially modified state; check it before re-running steps that are "
-                            "not idempotent (e.g. log1p, normalization, scaling)."
-                        )
+                    if error_text is None:
+                        st.dirty_slots |= set(data_changes)
+                    else:
+                        reason = "disabled (rollback_on_failure: false)"
+                        if self.rollback_on_failure:
+                            rolled_back, reason = self._rollback(sorted(data_changes), dirty_before)
+                        if rolled_back:
+                            log(f"   ↩️ Rolled back: {', '.join(sorted(data_changes))}")
+                            notes.append(
+                                "[harness] This call FAILED after modifying shared data "
+                                f"({format_changes(data_changes)}). Those changes were ROLLED BACK: "
+                                f"{', '.join(DATA_SLOTS[a] for a in sorted(data_changes))} "
+                                "is exactly as it was before this call. Other variables you "
+                                "created in the REPL during this call are unaffected."
+                            )
+                        else:
+                            st.dirty_slots |= set(data_changes)
+                            log(f"   ⚠️ Rollback not possible: {reason}")
+                            notes.append(
+                                "[harness] WARNING: this call FAILED but had already modified shared data "
+                                f"before failing: {format_changes(data_changes)}. It could not be rolled "
+                                f"back ({reason}). The data is now in a partially modified state; check "
+                                "it before re-running steps that are not idempotent (e.g. log1p, "
+                                "normalization, scaling)."
+                            )
 
         success = error_text is None
         if success:
@@ -235,7 +266,9 @@ class ToolRuntime:
             "body": body,
             "notes": notes,
             "plots": saved_plots,
-            "data_changes": format_changes(data_changes) if data_changes else "",
+            "data_changes": (format_changes(data_changes) + (" [rolled back]" if rolled_back else "")
+                             if data_changes else ""),
+            "rolled_back": rolled_back,
             "args_preview": {k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v))
                              for k, v in args_preview.items()},
         }
@@ -247,8 +280,57 @@ class ToolRuntime:
         if not slots:
             return {"results": {}}
         results = checkpoint_state(self.state, self.output_dir, slots)
-        self.state.dirty_slots = {a for a, r in results.items() if r.startswith("ERROR")}
+        failed = set()
+        for attr in slots:
+            res = results.get(attr)
+            if res is None:            # slot is now empty -> nothing to write
+                self.restore_sources[attr] = None
+            elif res.startswith("ERROR"):
+                failed.add(attr)
+            else:
+                self.restore_sources[attr] = res
+        self.state.dirty_slots = failed
         return {"results": results}
+
+    def _rollback(self, attrs: list[str], dirty_before: set) -> tuple[bool, str]:
+        """Restore the given slots to their last checkpoint, all or nothing.
+
+        Valid only for slots that had no unsaved changes before this call (then
+        the checkpoint IS the pre-call state). Everything is loaded before
+        anything is swapped, so a failed load leaves the state untouched.
+        """
+        stale = [a for a in attrs if a in dirty_before]
+        if stale:
+            return False, (f"{', '.join(DATA_SLOTS[a] for a in stale)} had unsaved changes from an "
+                           "earlier step (checkpointing disabled or a checkpoint failed)")
+        loaded = {}
+        try:
+            for attr in attrs:
+                src = self.restore_sources.get(attr)
+                if src is None:
+                    loaded[attr] = None
+                elif str(src).endswith(".h5ad"):
+                    import anndata
+                    loaded[attr] = anndata.read_h5ad(src)
+                else:
+                    loaded[attr] = pd.read_csv(src, index_col=0)
+        except (KeyboardInterrupt, TerminationRequested):
+            raise
+        except BaseException as e:  # noqa: BLE001
+            return False, f"reloading the saved copy failed: {type(e).__name__}: {e}"
+
+        from src.tools_external import support_tools
+        ns = support_tools._persistent_namespace
+        for attr, obj in loaded.items():
+            setattr(self.state, attr, obj)
+            varname = DATA_SLOTS[attr]
+            if obj is None:
+                ns.pop(varname, None)
+            else:
+                ns[varname] = obj
+        import gc
+        gc.collect()
+        return True, ""
 
     def finalize(self, _req: dict = None) -> dict:
         """Write final result_*.h5ad files (atomic) and close the backed dataset."""
