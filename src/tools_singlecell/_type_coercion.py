@@ -25,7 +25,7 @@ def _is_none_like(v: Any) -> bool:
     return v is None or (isinstance(v, str) and v.strip().lower() in {"none", "null", ""})
 
 
-def coerce_int(v: Any, *, default: Optional[int] = None) -> Optional[int]:
+def coerce_int(v: Any, default: Optional[int] = None) -> Optional[int]:
     if _is_none_like(v):
         return default
     if isinstance(v, bool):
@@ -38,7 +38,7 @@ def coerce_int(v: Any, *, default: Optional[int] = None) -> Optional[int]:
     return int(f)
 
 
-def coerce_float(v: Any, *, default: Optional[float] = None) -> Optional[float]:
+def coerce_float(v: Any, default: Optional[float] = None) -> Optional[float]:
     if _is_none_like(v):
         return default
     if isinstance(v, bool):
@@ -48,7 +48,7 @@ def coerce_float(v: Any, *, default: Optional[float] = None) -> Optional[float]:
     return float(v)
 
 
-def coerce_bool(v: Any, *, default: Optional[bool] = None) -> Optional[bool]:
+def coerce_bool(v: Any, default: Optional[bool] = None) -> Optional[bool]:
     if _is_none_like(v):
         return default
     if isinstance(v, bool):
@@ -64,7 +64,7 @@ def coerce_bool(v: Any, *, default: Optional[bool] = None) -> Optional[bool]:
     raise ValueError(f"Cannot coerce to bool: {v!r}")
 
 
-def coerce_str(v: Any, *, default: Optional[str] = None) -> Optional[str]:
+def coerce_str(v: Any, default: Optional[str] = None) -> Optional[str]:
     if _is_none_like(v):
         return default
     if isinstance(v, str):
@@ -72,7 +72,7 @@ def coerce_str(v: Any, *, default: Optional[str] = None) -> Optional[str]:
     return str(v)
 
 
-def coerce_int_list(v: Any, *, default: Optional[List[int]] = None) -> Optional[List[int]]:
+def coerce_int_list(v: Any, default: Optional[List[int]] = None) -> Optional[List[int]]:
     if _is_none_like(v):
         return default
     if isinstance(v, (list, tuple)):
@@ -92,7 +92,7 @@ def coerce_int_list(v: Any, *, default: Optional[List[int]] = None) -> Optional[
     return [coerce_int(v)]
 
 
-def coerce_str_list(v: Any, *, default: Optional[List[str]] = None) -> Optional[List[str]]:
+def coerce_str_list(v: Any, default: Optional[List[str]] = None) -> Optional[List[str]]:
     if _is_none_like(v):
         return default
     if isinstance(v, list):
