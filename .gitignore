@@ -221,3 +221,4 @@ data/datasets-mt
 # Run outputs (output/README.md documents the layout)
 output/*
 !output/README.md
+logs/
