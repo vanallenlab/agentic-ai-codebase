@@ -9,7 +9,7 @@ Implementation: src.tool_scselected.multiome
 description = [
     {
         "name": "scRNA_scATAC_perform_joint_embedding",
-        "description": "Perform joint embedding of paired scRNA-seq and scATAC-seq data using SnapATAC2 multi_spectral. Computes a shared latent space and generates a UMAP colored by cell type. Requires both adata_rna and adata_atac to be loaded.",
+        "description": "Perform joint embedding of paired scRNA-seq and scATAC-seq data using SnapATAC2 multi_spectral on the cells present in both objects (highly variable genes / selected ATAC features when available). Computes a shared latent space (obsm['X_joint']) and a UMAP colored by cell type. Requires both adata_rna and adata_atac to be loaded; the result goes to adata_combined.",
         "required_parameters": [],
         "optional_parameters": [],
         "is_plotting": True,
