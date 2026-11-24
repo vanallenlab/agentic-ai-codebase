@@ -274,6 +274,18 @@ def _log_artifacts(output_dir, config_path: str = None, task_path: str = None):
     wandb.log_artifact(artifact)
 
 
+def _error_headline(error) -> str:
+    """The exception line of a tool error (e.g. "ValueError: ..."), not the agent's printed
+    output that run_python_repl appends after "--- output before the error ---"."""
+    import re
+    text = str(error or "unknown").split("--- output before the error ---")[0].strip()
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    for line in reversed(lines):
+        if re.match(r"^[A-Za-z_][\w.]*(Error|Exception|Interrupt|Exit|Warning)\b", line):
+            return line
+    return lines[-1] if lines else "unknown"
+
+
 def print_summary(step_count: int, execution_history: list, tracker: "TokenTracker"):
     """Print execution summary to console/log."""
     total_calls = len(execution_history)
@@ -313,7 +325,6 @@ def print_summary(step_count: int, execution_history: list, tracker: "TokenTrack
     if failures:
         log(f"\n### Errors Encountered")
         for f in failures:
-            first_line = (str(f.get('error') or 'unknown').strip().splitlines() or ['unknown'])[-1]
-            log(f"   Step {f['step']}: {f['name']} - {first_line[:200]}")
+            log(f"   Step {f['step']}: {f['name']} - {_error_headline(f.get('error'))[:200]}")
     
     return total_calls, len(failures)
