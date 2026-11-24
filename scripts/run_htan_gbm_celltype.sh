@@ -47,9 +47,13 @@ curl -sS -o /dev/null -w "Anthropic API key check: HTTP %{http_code} (expect 200
   https://api.anthropic.com/v1/models -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01"
 # Recommended: an NCBI key avoids HTTP 429 rate limits on PubMed / GEO lookups.
 # export NCBI_API_KEY=...
-# W&B: set WANDB_API_KEY to log to vanallenlab-agentic-ai/agentic-ai-htan,
-# otherwise logging is skipped (the run still writes everything to its folder).
-[ -n "${WANDB_API_KEY:-}" ] || export WANDB_MODE=disabled
+# W&B + Weave run in the harness on this VM (never in the worker container, which has no
+# network). Log in once:  uv run wandb login   (key from https://wandb.ai/authorize, saved
+# in ~/.netrc), or put `export WANDB_API_KEY=...` in ~/.bashrc. Without either, W&B logging
+# is skipped; the run still writes everything to its own folder.
+if [ -z "${WANDB_API_KEY:-}" ] && ! grep -qs "api.wandb.ai" ~/.netrc; then
+  echo "W&B: not logged in -> logging disabled (run: uv run wandb login)"; export WANDB_MODE=disabled
+fi
 
 # --- 5. Check the leakage guard before spending anything -----------------------
 uv run python -c "
@@ -67,14 +71,15 @@ LOG=logs/gbm_celltype_$(date +%Y%m%d_%H%M%S).log
 tmux new-session -d -s gbm_celltype "bash -c '
   cd $REPO
   eval \"\$(grep -E \"^export (ANTHROPIC_API_KEY|NCBI_API_KEY|WANDB_API_KEY)=\" ~/.bashrc)\"
-  [ -n \"\${WANDB_API_KEY:-}\" ] || export WANDB_MODE=disabled
+  [ -n \"\${WANDB_API_KEY:-}\" ] || grep -qs api.wandb.ai ~/.netrc || export WANDB_MODE=disabled
   export PATH=\"\$HOME/.local/bin:\$PATH\"
   uv run run_agent_htan.py --config $CONFIG 2>&1 | tee $LOG
   echo \"run finished (exit \${PIPESTATUS[0]}); press Enter to close\"; read'"
 echo "Started. Log: $LOG"
 
 # --- 7. Watch it ----------------------------------------------------------------
-#   tmux attach -t gbm_celltype            # live view (detach: Ctrl-b then d)
+#   tmux attach -t gbm_celltype            # live view. Detach with Ctrl-b then d;
+#                                          # Ctrl-c here STOPS the run.
 #   tail -f logs/gbm_celltype_*.log        # or follow the log
 #   docker ps --filter name=m3a-worker     # the worker container
 #   docker stats --no-stream               # its memory (capped at 24g)
