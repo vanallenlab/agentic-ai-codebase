@@ -14,6 +14,8 @@ cd "$(dirname "$0")/../.."
 
 command -v docker >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q docker.io; }
 command -v tmux >/dev/null || sudo apt-get install -y -q tmux
+# the host env (uv sync) builds a few packages from source (macs3 -> cykhash needs a C compiler, zlib)
+dpkg -s build-essential zlib1g-dev >/dev/null 2>&1 || sudo apt-get install -y -q build-essential zlib1g-dev
 command -v uv >/dev/null || [ -x "$HOME/.local/bin/uv" ] || curl -LsSf https://astral.sh/uv/install.sh | sh
 id -nG | grep -qw docker || { sudo usermod -aG docker "$USER"; echo "added $USER to the docker group: log out and back in, then re-run"; }
 
