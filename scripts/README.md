@@ -95,9 +95,9 @@ python scripts/sync_documentation.py
 
 ## HTAN runs: `run_htan_task.sh`, `run_htan_cohort.sh`, `htan/run_<cohort>.sh`
 
-- `bash scripts/htan/run_<cohort>.sh` runs every task of one cancer type (config/htan/opus-4-6/<cohort>/)
+- `bash scripts/htan/run_<cohort>.sh` runs every task of one cancer type (config/htan/opus-5-5/<cohort>/, Claude Opus 5.5)
   one after another in tmux session `htan_<cohort>`, so cohorts can run on different machines.
-  Finished tasks get `output/<cohort>/<task>/DONE` and are skipped on a re-run; failed tasks are retried.
+  Finished tasks get `output/opus-5-5/<cohort>/<task>/DONE` and are skipped on a re-run; failed tasks are retried.
 - `DRY_RUN=1 bash scripts/htan/run_<cohort>.sh` runs the pre-flight checks of every task without starting runs.
 - `ONLY="a b"` / `SKIP="a b"` pick tasks; `PRUNE_CHECKPOINTS=1` deletes a finished run's checkpoints/ (~7 GB).
 - Other machines: set `DATA_MNT` (folder with htan_datasets/) and `RUNS` (run folders, ~20 GB per run) if they

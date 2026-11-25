@@ -1,0 +1,25 @@
+# Same task and inputs as config/htan/opus-4-6/coadread/cancertype_annotation.yaml, model Claude Opus 5.5.
+extends: config/htan/leakage_guard.yaml
+task_file: tasks/htan/coadread/cancertype_annotation.md
+scrna_data_path: data/datasets-mt/htan_datasets/results/scrna/CRC/final_combined_adata_CRC_anonymised.h5ad
+scatac_data_path: data/datasets-mt/htan_datasets/results/scatac/CRC/final_combined_adata_CRC_anonymised.h5ad
+# scatac_snap_path: data/datasets-mt/htan_datasets/results/scatac/CRC/final_combined_adata_CRC_backed.h5ad
+# data_dir: data/datasets-mt/htan_datasets/results/CRC
+tool_category: scselected_scrna, scselected_scatac, scselected_multiome, external_database
+reasoning_effort: medium
+interactive: false
+capture_telemetry: true
+output_base_dir: output/opus-5-5/coadread/cancertype_annotation/
+
+llm:
+  provider: anthropic
+  model: claude-opus-5-5
+  prompt_caching: true
+  max_tokens: 64000
+  effort: medium
+  thinking_display: summarized
+logging:
+  enabled: true
+  project: agentic-ai-htan-v2
+  entity: vanallenlab-agentic-ai
+  run_name: null  # auto-generated if null

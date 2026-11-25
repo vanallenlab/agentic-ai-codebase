@@ -6,13 +6,13 @@
 #   DRY_RUN=1 bash scripts/run_htan_cohort.sh cesc     # pre-flight checks of every task, no runs
 #   ONLY="celltype_annotation molecular_pik3ca" bash scripts/run_htan_cohort.sh cesc
 #   SKIP="pancancer_clinical_survival" bash scripts/run_htan_cohort.sh cesc
-#   MODEL_DIR=opus-4-6 (default) picks config/htan/<MODEL_DIR>/<COHORT>/*.yaml
+#   MODEL_DIR=opus-5-5 (default; opus-4-6 for the older set) picks config/htan/<MODEL_DIR>/<COHORT>/*.yaml
 #
 # Each task goes through scripts/run_htan_task.sh (pre-flight checks, leakage guard, one
 # isolated worker container). Runs are sequential because each worker may use up to 24 GB.
 #
 # Re-running the script is safe: a task that finished is marked with
-# output/<cohort>/<task>/DONE and skipped. A task that failed is retried on the next start.
+# <output_base_dir>/DONE (output/opus-5-5/<cohort>/<task>/DONE) and skipped. A task that failed is retried on the next start.
 # Ctrl-c in the session stops the current task cleanly (results are saved) and does not
 # start the next one.
 #
@@ -28,7 +28,7 @@ set -euo pipefail
 
 COHORT=${1:?usage: run_htan_cohort.sh COHORT  (brca cesc coadread gbm hgsoc hnsc mm paad skcm ucec)}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
-MODEL_DIR=${MODEL_DIR:-opus-4-6}
+MODEL_DIR=${MODEL_DIR:-opus-5-5}
 CFG_DIR=config/htan/$MODEL_DIR/$COHORT
 cd "$REPO"
 [ -d "$CFG_DIR" ] || { echo "no configs in $CFG_DIR"; ls "config/htan/$MODEL_DIR"; exit 1; }
@@ -43,7 +43,9 @@ for f in "$CFG_DIR"/*.yaml; do
 done
 [ ${#TASKS[@]} -gt 0 ] || { echo "no tasks selected"; exit 1; }
 
-done_marker() { echo "output/$COHORT/$1/DONE"; }
+# A task's output folder is its config's output_base_dir (output/opus-5-5/<cohort>/<task>/).
+out_dir() { sed -n 's/^output_base_dir: *//p' "$CFG_DIR/$1.yaml" | sed 's:/*$::'; }
+done_marker() { echo "$(out_dir "$1")/DONE"; }
 
 if [ "${DRY_RUN:-0}" = 1 ]; then
     fail=0
@@ -72,8 +74,8 @@ if [ "${_IN_SESSION:-0}" = 1 ]; then
             printf "%s\tstopped\t%s\n" "$t" "$mins" >> "$SUMMARY"; echo "stopped by Ctrl-c"; break
         fi
         if [ "$rc" = 0 ]; then
-            mkdir -p "output/$COHORT/$t"
-            ptr=$(ls -t "output/$COHORT/$t"/run_*.json 2>/dev/null | head -1 || true)
+            mkdir -p "$(out_dir "$t")"
+            ptr=$(ls -t "$(out_dir "$t")"/run_*.json 2>/dev/null | head -1 || true)
             echo "${ptr:-}" > "$(done_marker "$t")"
             if [ "${PRUNE_CHECKPOINTS:-0}" = 1 ] && [ -n "$ptr" ]; then
                 rd=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['run_dir'])" "$ptr")
@@ -101,5 +103,5 @@ cat <<EOF
 Started tmux session '$SESSION'.
   tmux attach -t $SESSION     # watch; detach with Ctrl-b then d (Ctrl-c stops the current task and the loop)
   ls logs/ | grep -i $COHORT  # per-task logs; logs/cohort_${COHORT}_*.tsv is the summary
-  ls output/$COHORT/*/DONE    # finished tasks
+  ls output/$MODEL_DIR/$COHORT/*/DONE    # finished tasks
 EOF

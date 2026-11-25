@@ -24,9 +24,9 @@ The big cohorts get fewer tasks because each of their steps is slower.
 4. `bash scripts/htan/setup_machine.sh /dev/disk/by-id/google-htan-datasets`
    (installs docker/tmux/uv if missing, mounts the data disk ro at `~/htan-disk-mt`, pulls the image).
 5. `DRY_RUN=1 bash scripts/htan/machine_<N>.sh`, then `bash scripts/htan/machine_<N>.sh`.
-6. Watch: `tmux ls`, `tmux attach -t htan_<cohort>`; finished tasks: `ls output/*/*/DONE`.
+6. Watch: `tmux ls`, `tmux attach -t htan_<cohort>`; finished tasks: `ls output/opus-5-5/*/*/DONE`.
    Re-running the machine script skips finished tasks and retries failed ones.
 
-Results stay on each machine (`output/<cohort>/` pointer files and the run folders in `~/agent-runs`);
-copy both back, e.g. `rsync -a vm:agentic-ai-codebase/output/<cohort>/ output/<cohort>/` and
+Results stay on each machine (`output/opus-5-5/<cohort>/` pointer files and the run folders in `~/agent-runs`);
+copy both back, e.g. `rsync -a vm:agentic-ai-codebase/output/opus-5-5/ output/opus-5-5/` and
 `rsync -a vm:agent-runs/ ~/agent-runs/` (run folder ids are random, so they do not collide).

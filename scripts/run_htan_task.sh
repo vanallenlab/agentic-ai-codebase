@@ -3,8 +3,8 @@
 # Run one HTAN task end to end, with pre-flight checks.
 #
 #   bash scripts/run_htan_task.sh [CONFIG]
-#   bash scripts/run_htan_task.sh config/htan/opus-4-6/cesc/molecular_pik3ca.yaml   # default
-#   bash scripts/run_htan_task.sh config/htan/opus-4-6/gbm/celltype_annotation.yaml
+#   bash scripts/run_htan_task.sh config/htan/opus-5-5/cesc/molecular_pik3ca.yaml   # default
+#   bash scripts/run_htan_task.sh config/htan/opus-5-5/gbm/celltype_annotation.yaml
 #   DRY_RUN=1 bash scripts/run_htan_task.sh [CONFIG]      # all checks, no run
 #   FOREGROUND=1 bash scripts/run_htan_task.sh CONFIG     # run here, no tmux (used by run_htan_cohort.sh)
 #
@@ -28,7 +28,7 @@
 set -euo pipefail
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
-CONFIG=${1:-config/htan/opus-4-6/cesc/molecular_pik3ca.yaml}
+CONFIG=${1:-config/htan/opus-5-5/cesc/molecular_pik3ca.yaml}
 IMAGE=ghcr.io/vanallenlab/agentic-sc-runtime:v3
 DATA_MNT=${DATA_MNT:-$HOME/htan-disk-mt}
 RUNS=${RUNS:-$HOME/agent-runs}

@@ -31,7 +31,7 @@ uv's scope.
 uv run run_agent.py --config config/hai/jyates_eac.yaml --name your-name
 
 # HTAN experiment (batch)
-uv run run_agent_htan.py --config config/htan/opus-4-6/brca/celltype_annotation.yaml
+uv run run_agent_htan.py --config config/htan/opus-5-5/brca/celltype_annotation.yaml
 ```
 
 Interactive mode: add `--interactive`. List available tools: `--list-tools`.
@@ -128,7 +128,7 @@ Every run writes, as it goes: `agent.log`, `steps.jsonl` (every tool execution i
 - `run_agent.py` — main entry point (HAI / interactive experiments)
 - `run_agent_htan.py` — entry point for HTAN batch experiments (adds cNMF data loading)
 - `src/` — agent loop, LLM client, tool registry, hooks, observability (W&B, Weave)
-- `config/` — YAML configs (`hai/` for HAI datasets, `htan/opus-4-6/` for HTAN cancer types)
+- `config/` — YAML configs (`hai/` for HAI datasets, `htan/opus-5-5/` for HTAN cancer types; `htan/opus-4-6/` is the older Opus 4.6 set)
 - `tasks/` — task prompt files (`.md` / `.txt`) referenced by configs
 - `data/` — input datasets (see `data/README.md` for expected structure)
 - `output/` — agent run results (see `output/README.md` for structure)
