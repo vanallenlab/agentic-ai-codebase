@@ -32,7 +32,7 @@ mkdir -p data output
 [ -e data/datasets-mt ] || ln -s "$DATA_MNT" data/datasets-mt
 [ -e output/runs ] || ln -s "$RUNS" output/runs
 export PATH="$HOME/.local/bin:$PATH"
-uv sync --frozen -q
-if id -nG | grep -qw docker; then docker pull -q ghcr.io/vanallenlab/agentic-sc-runtime:v3; fi
+echo "installing the harness environment (uv sync, a few minutes)..."; uv sync --frozen
+if id -nG | grep -qw docker; then echo "pulling the worker image (~9.5 GB)..."; docker pull ghcr.io/vanallenlab/agentic-sc-runtime:v3; fi
 echo "setup done: data $DATA_MNT (read-only), runs $RUNS, free $(df -h --output=avail "$RUNS" | tail -1)"
 echo "next: DRY_RUN=1 RUNS=$RUNS bash scripts/htan/machine_<N>.sh"
