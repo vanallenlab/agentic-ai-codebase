@@ -214,3 +214,11 @@ old/
 wandb/
 debug/
 config_test/
+
+# HTAN data disk mount point (data lives outside git)
+data/datasets-mt
+
+# Run outputs (output/README.md documents the layout)
+output/*
+!output/README.md
+logs/

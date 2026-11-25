@@ -92,3 +92,16 @@ python scripts/sync_documentation.py
 2. Runs generate_cookbooks.py
 3. Validates all references
 4. Generates summary report
+
+## HTAN runs: `run_htan_task.sh`, `run_htan_cohort.sh`, `htan/run_<cohort>.sh`
+
+- `bash scripts/htan/run_<cohort>.sh` runs every task of one cancer type (config/htan/opus-4-6/<cohort>/)
+  one after another in tmux session `htan_<cohort>`, so cohorts can run on different machines.
+  Finished tasks get `output/<cohort>/<task>/DONE` and are skipped on a re-run; failed tasks are retried.
+- `DRY_RUN=1 bash scripts/htan/run_<cohort>.sh` runs the pre-flight checks of every task without starting runs.
+- `ONLY="a b"` / `SKIP="a b"` pick tasks; `PRUNE_CHECKPOINTS=1` deletes a finished run's checkpoints/ (~7 GB).
+- Other machines: set `DATA_MNT` (folder with htan_datasets/) and `RUNS` (run folders, ~20 GB per run) if they
+  differ from `~/htan-disk-mt` and `~/agent-runs`; `M3A_WORKER_MEMORY` / `M3A_WORKER_CPUS` override the 24 GB / 8 CPU
+  worker limits. BRCA (~41 GB of data), COADREAD (~33 GB) and PAAD (~28 GB) need `M3A_WORKER_MEMORY>=64g / 53g / 45g`
+  on a machine with that much RAM; the pre-flight refuses to start otherwise.
+- `bash scripts/run_htan_task.sh CONFIG` runs a single task (same checks).

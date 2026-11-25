@@ -6,14 +6,32 @@ M3A enforces constraints across five core dimensions to enable rigorous tracing 
 
 We applied M3A to evaluate a Claude Opus 4.6 (Feb 6, 2026) based agent across multi-step, multi-omic reasoning tasks with predefined evaluation endpoints spanning molecular profiling data from multiple cancer types.
 
+## Environment
+
+The environment is managed with [uv](https://docs.astral.sh/uv/) and fully pinned:
+`.python-version` fixes the interpreter (a uv-managed CPython 3.10.19 build),
+`pyproject.toml` pins direct dependencies, and `uv.lock` pins every transitive
+package with hashes. Every machine that runs `uv sync --frozen` gets the same
+environment.
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh   # once per machine (uv >= 0.13.9)
+uv sync --frozen                                  # creates .venv exactly from uv.lock
+uv sync --frozen --extra scvi                     # optional: scvi-tools based tools
+```
+
+Do not run `uv lock` / `uv add` unless you intend to change the environment; commit
+the updated `uv.lock` when you do. System libraries (glibc, GPU driver) are outside
+uv's scope.
+
 ## Quick start
 
 ```bash
 # HAI experiment (interactive)
-python run_agent.py --config config/hai/jyates_eac.yaml --name your-name
+uv run run_agent.py --config config/hai/jyates_eac.yaml --name your-name
 
 # HTAN experiment (batch)
-python run_agent_htan.py --config config/htan/opus-4-6/brca/celltype_annotation.yaml
+uv run run_agent_htan.py --config config/htan/opus-4-6/brca/celltype_annotation.yaml
 ```
 
 Interactive mode: add `--interactive`. List available tools: `--list-tools`.
@@ -40,6 +58,70 @@ logging:
 ```
 
 **Env:** set `ANTHROPIC_API_KEY`. For W&B logging also set `WANDB_API_KEY`.
+
+### Harness robustness options (all optional)
+
+```yaml
+tool_timeout_s: 7200            # wall-clock limit per tool call (0/null = none)
+tool_output_max_chars: 100000   # larger outputs: head+tail to the model, full text in output/tool_outputs/
+track_data_changes: true        # detect changes to shared data per call
+checkpoint_data: true           # after each step, write modified data to output/checkpoints/ (atomic)
+rollback_on_failure: true       # a FAILED call's changes to shared data are undone (reloaded from the last
+                                # checkpoint) and the model is told; needs the two options above
+seed: 0                         # python/numpy seed (null = don't seed)
+image_max_edge: 1568            # plots sent to the model are downscaled to the model's native resolution (disk copies untouched)
+send_images: true               # false = text-only ablation: plots are saved to disk but never shown to the model,
+                                # and PIL / matplotlib image readers raise inside the REPL
+llm:
+  max_tokens: 16384             # per-response output cap (default by reasoning_effort: 8192/16384/32000)
+  thinking: default             # default | adaptive | disabled  (default: adaptive only when reasoning_effort=high)
+  effort: null                  # Anthropic output_config.effort (null = API default)
+  thinking_display: null        # summarized = readable thinking in model_thinking (Opus 5.x returns it empty by default)
+  max_retries: 8                # SDK retries for 429/5xx
+  retry_total_seconds: 1800     # additional backoff window for transient API errors
+  max_images_per_request: 600   # stop cleanly (everything saved) instead of sending a request the API rejects
+  prompt_caching: true          # Anthropic: cache the conversation prefix (cuts input cost ~80%; outputs unchanged)
+logging:
+  required: false               # if true, a wandb init failure aborts the run
+```
+
+### Tool execution isolation
+
+Tools, the Python REPL and the datasets live in a separate **worker** process; the
+harness (model loop, validation, logging, checkpoints) never runs agent code.
+If the worker crashes, is OOM-killed or hangs past the hard timeout, the harness
+kills it, starts a new one from the latest per-step checkpoints and reports the
+failure to the model as the result of that call — the run continues.
+
+```yaml
+execution:
+  mode: subprocess            # subprocess (default) | container | inprocess (debug only, no isolation)
+  hard_timeout_grace_s: 120   # worker is killed if a call exceeds tool_timeout_s + this
+  memory_limit_gb: null       # subprocess mode: address-space cap (MemoryError instead of OOM kill)
+  container:                  # used when mode: container
+    runtime: docker           # docker | podman
+    image: ghcr.io/vanallenlab/agentic-sc-runtime:v2   # lab runtime image (see onboarding/README.md)
+    memory: 48g               # cgroup memory limit (no swap)
+    cpus: 8
+    network: true             # false = no network (literature/database tools need it)
+    gpus: null                # e.g. "all"
+  agent_code_llm_keys: false  # LLM API keys are never visible to agent-written code (REPL/terminal);
+                              # harness tools that need them (literature search) get them per call
+```
+
+Agent code is audited: each step in `steps.jsonl` carries `audit_flags`, `image_read` (code that opens or
+decodes image files) and/or `llm_access` (code that references an LLM API or API keys). Flags never block a call.
+
+In container mode the repo is mounted read-only, input data read-only, and only the
+run's output directory is writable; paths are identical inside and outside the
+container, and files are written as your user. Pull the image first:
+
+```bash
+docker login ghcr.io          # GitHub classic token with read:packages
+docker pull ghcr.io/vanallenlab/agentic-sc-runtime:v2
+```
+
+Every run writes, as it goes: `agent.log`, `steps.jsonl` (every tool execution in full) and `conversation.jsonl` (every request/response; images referenced by file path). These are also streamed to W&B. SIGTERM/SIGHUP trigger a clean shutdown with all outputs saved, and the process exits non-zero if the run ended early.
 
 ## Layout
 

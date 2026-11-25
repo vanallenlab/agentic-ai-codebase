@@ -613,15 +613,17 @@ def _run_cnmf_single(
     # K selection plot
     cnmf_obj.k_selection_plot()
     
-    # Auto-select K based on highest stability
-    stats_file = os.path.join(output_dir, run_name, f"{run_name}.k_selection_stats.txt")
+    # Auto-select K with the highest stability (silhouette score of the consensus clustering)
+    from cnmf.cnmf import load_df_from_npz
+    stats_file = cnmf_obj.paths['k_selection_stats']
     if not os.path.exists(stats_file):
         raise FileNotFoundError(f"cNMF stats file not found: {stats_file}. Check cNMF output in {output_dir}/{run_name}/")
-    
-    stats = pd.read_csv(stats_file, sep='\t', index_col=0)
-    selected_k = int(stats['stability'].idxmax())
-    stability = stats.loc[selected_k, 'stability']
-    print(f"   Auto-selected K={selected_k} (stability={stability:.3f})")
+    stats = load_df_from_npz(stats_file)
+    print(stats[['k', 'silhouette', 'prediction_error']].to_string(index=False))
+    best = stats['silhouette'].astype(float).idxmax()
+    selected_k = int(stats.loc[best, 'k'])
+    stability = float(stats.loc[best, 'silhouette'])
+    print(f"   Auto-selected K={selected_k} (stability/silhouette={stability:.3f})")
     
     # Consensus
     cnmf_obj.consensus(k=selected_k, density_threshold=density_threshold)
@@ -741,6 +743,38 @@ def scRNA_cnmf_factorization(
     
     return adata
 
+_GENE_POSITIONS = None
+
+
+def _gene_positions():
+    """Gene name -> (chromosome, start, end) from the GENCODE v41 hg38 annotation (cached)."""
+    global _GENE_POSITIONS
+    if _GENE_POSITIONS is None:
+        import pandas as pd
+        import snapatac2 as snap
+        gff = pd.read_csv(snap.genome.hg38.annotation, sep="\t", comment="#", header=None,
+                          usecols=[0, 2, 3, 4, 8], names=["chromosome", "type", "start", "end", "attr"])
+        gff = gff[gff["type"] == "gene"]
+        gff["gene_name"] = gff["attr"].str.extract(r"gene_name=([^;]+)", expand=False)
+        gff = gff.dropna(subset=["gene_name"])
+        # one position per gene name; prefer the X copy of pseudoautosomal genes over the Y copy
+        gff = gff.sort_values("chromosome", key=lambda c: c.eq("chrY")).drop_duplicates("gene_name")
+        _GENE_POSITIONS = gff.set_index("gene_name")[["chromosome", "start", "end"]]
+    return _GENE_POSITIONS
+
+
+def _add_gene_positions(adata):
+    """Add var['chromosome'|'start'|'end'] for inferCNV. Genes without a position get NaN and
+    are skipped by inferCNV; chromosome is categorical so the object stays writable."""
+    import pandas as pd
+    pos = _gene_positions().reindex(adata.var_names)
+    adata.var["chromosome"] = pd.Categorical(pos["chromosome"].to_numpy())
+    adata.var["start"] = pos["start"].to_numpy(dtype=float)
+    adata.var["end"] = pos["end"].to_numpy(dtype=float)
+    print(f"   Genomic positions (GENCODE v41, hg38) found for {int(pos['chromosome'].notna().sum())} "
+          f"of {adata.n_vars} genes")
+
+
 def scRNA_infercnv(
     adata,
     cell_type_key,
@@ -780,13 +814,18 @@ def scRNA_infercnv(
     batch_key = coerce_str(batch_key)
     window_size = coerce_int(window_size, 250)
     
-    # Add genomic positions if missing
+    # Add genomic positions if missing (GENCODE v41 hg38 gene annotation; offline in the runtime image)
     if not all(col in adata.var.columns for col in ['chromosome', 'start', 'end']):
-        cnv.io.genomic_position_from_biomart(adata)
+        _add_gene_positions(adata)
     
     # Run inferCNV and compute score
     cnv.tl.infercnv(adata, reference_key=cell_type_key, reference_cat=reference_cat, window_size=window_size)
+    # cnv_score averages the CNV signal per CNV cluster, so cluster the CNV profiles first
+    cnv.tl.pca(adata)
+    cnv.pp.neighbors(adata)
+    cnv.tl.leiden(adata)
     cnv.tl.cnv_score(adata)
+    print(adata.obs.groupby(cell_type_key, observed=True)["cnv_score"].describe()[["count", "mean", "50%"]].to_string())
     
     # Classify tumor vs normal
     adata.obs["cnv_status"] = "normal"

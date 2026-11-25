@@ -9,14 +9,14 @@ Implementation: src.tool_scselected.scatac
 description = [
     {
         "name": "scATAC_calculate_qc_metrics",
-        "description": "Calculate QC metrics for scATAC-seq data using SnapATAC2. Computes fragment size distribution, nucleosome signal, and TSS enrichment (hg38). Returns violin plots of n_fragments, TSS enrichment, and nucleosome signal.",
+        "description": "Calculate QC metrics for scATAC-seq data using SnapATAC2. On a fragment-level object, computes fragment size distribution, nucleosome signal, and TSS enrichment (hg38) and returns violin plots of n_fragments, TSS enrichment, and nucleosome signal. On a cell-by-peak matrix without fragments (no obsm['fragment_paired']), it summarizes and plots the per-cell QC columns already in adata.obs instead.",
         "required_parameters": [],
         "optional_parameters": [],
         "is_plotting": True,
     },
     {
         "name": "scATAC_qc_filter_cells",
-        "description": "Filter cells based on QC metrics. Uses min_counts, max_counts, min_tsse for snap.pp.filter_cells, and max_nucleosome_signal for additional filtering. Should be called after scATAC_calculate_qc_metrics.",
+        "description": "Filter cells based on QC metrics: min_counts / max_counts (n_fragment, an nCount_* column, or total counts in X), min_tsse (tsse or TSS.enrichment column) and max_nucleosome_signal. Should be called after scATAC_calculate_qc_metrics.",
         "required_parameters": [],
         "optional_parameters": [
             {
@@ -47,13 +47,13 @@ description = [
     },
     {
         "name": "scATAC_calculate_tiles",
-        "description": "Add tile matrix to the AnnData object using snap.pp.add_tile_matrix. This step adds n_vars (genomic bins) and is required before feature selection.",
+        "description": "Add a tile matrix (genomic bins) using snap.pp.add_tile_matrix. Requires fragment data (obsm['fragment_paired']); replaces any existing feature matrix. Not needed for a cell-by-peak matrix, whose peaks can be used directly.",
         "required_parameters": [],
         "optional_parameters": [],
     },
     {
         "name": "scATAC_feature_selection",
-        "description": "Select top features (genomic bins) by variability using snap.pp.select_features. Should be called after scATAC_calculate_tiles.",
+        "description": "Select top features (genomic bins or peaks) using snap.pp.select_features; marks them in adata.var['selected'], which the doublet detection and spectral embedding then use.",
         "required_parameters": [],
         "optional_parameters": [
             {
@@ -100,7 +100,7 @@ description = [
     },
     {
         "name": "scATAC_batch_correction",
-        "description": "Perform batch correction using Harmony or Scanorama via SnapATAC2. Requires spectral embedding to be computed first via scATAC_dimensionality_reduction.",
+        "description": "Perform batch correction of the spectral embedding using Harmony or Scanorama via SnapATAC2 (stored as obsm['X_spectral_harmony'] or obsm['X_spectral_scanorama'], which scATAC_clustering then uses). Requires scATAC_dimensionality_reduction first.",
         "required_parameters": [
             {
                 "name": "batch_key",
@@ -119,7 +119,7 @@ description = [
     },
     {
         "name": "scATAC_clustering",
-        "description": "Perform KNN graph construction, Leiden clustering, and UMAP on scATAC data using spectral embeddings. Returns UMAP plot colored by leiden cluster.",
+        "description": "Perform KNN graph construction, Leiden clustering, and UMAP on scATAC data using the batch-corrected spectral embedding if present, else X_spectral. Returns UMAP plot colored by leiden cluster.",
         "required_parameters": [],
         "optional_parameters": [
             {
@@ -145,7 +145,7 @@ description = [
     },
     {
         "name": "scATAC_identify_marker_peaks",
-        "description": "Identify marker peaks per cell type using MACS3 peak calling and motif enrichment via SnapATAC2. Calls peaks, merges them, finds marker regions, and performs motif enrichment. Saves results (peaks, marker_peaks, motifs) as CSV files to output_dir.",
+        "description": "Identify marker peaks per group and their enriched motifs via SnapATAC2 (CIS-BP motifs, hg38). On a fragment-level object, first calls peaks per group with MACS3 and builds a peak matrix; on a cell-by-peak matrix, uses its existing peaks. Saves marker_peaks.csv, motifs.csv (and merged_peaks.csv when peaks are called) to output_dir and prints the top motifs per group.",
         "required_parameters": [
             {
                 "name": "cell_type_key",
@@ -157,7 +157,7 @@ description = [
             {
                 "name": "output_dir",
                 "type": "str",
-                "description": "Directory to save output CSV files (marker_peaks.csv, peak_mat.csv, motifs.csv).",
+                "description": "Directory to save output CSV files (marker_peaks.csv, motifs.csv, merged_peaks.csv).",
                 "default": "."
             },
         ],

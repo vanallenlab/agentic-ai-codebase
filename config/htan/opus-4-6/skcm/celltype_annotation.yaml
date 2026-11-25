@@ -1,3 +1,4 @@
+extends: config/htan/leakage_guard.yaml
 task_file: tasks/htan/skcm/celltype_annotation.md
 scrna_data_path: data/datasets-mt/htan_datasets/results/scrna/SKCM/final_combined_adata_SKCM_with_cancertype_sitetype.h5ad
 scatac_data_path: data/datasets-mt/htan_datasets/results/scatac/SKCM/final_combined_adata_SKCM_with_cancertype_sitetype.h5ad
@@ -14,6 +15,6 @@ llm:
   model: claude-opus-4-6
 logging:
   enabled: true
-  project: agentic-ai-htan
+  project: agentic-ai-htan-v2
   entity: vanallenlab-agentic-ai
   run_name: null  # auto-generated if null

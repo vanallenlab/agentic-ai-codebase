@@ -1,3 +1,4 @@
+extends: config/htan/leakage_guard.yaml
 task_file: tasks/htan/coadread/pancancer_molecular_chromosomal_instability.md
 scrna_data_path: data/datasets-mt/htan_datasets/results/scrna/CRC/final_combined_adata_CRC_with_cancertype_sitetype_celltype.h5ad
 scatac_data_path: data/datasets-mt/htan_datasets/results/scatac/CRC/final_combined_adata_CRC_with_cancertype_sitetype_celltype.h5ad
@@ -17,6 +18,6 @@ llm:
   model: claude-opus-4-6
 logging:
   enabled: true
-  project: agentic-ai-htan
+  project: agentic-ai-htan-v2
   entity: vanallenlab-agentic-ai
   run_name: null  # auto-generated if null

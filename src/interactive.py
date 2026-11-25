@@ -198,21 +198,25 @@ def handle_user_question(client, question: str, task: str, execution_history: li
     
     context = "\n".join(context_parts)
     
-    response = client.create(
-        messages=[{
-            "type": "message",
-            "role": "user",
-            "content": f"""[CONTEXT - You are an AI assistant helping with a data analysis task]
+    try:
+        response = client.create(
+            messages=[{
+                "type": "message",
+                "role": "user",
+                "content": f"""[CONTEXT - You are an AI assistant helping with a data analysis task]
 {context}
 
 [USER QUESTION]
 {question}
 
 Please answer briefly and concisely based on the context above."""
-        }],
-        reasoning_effort="low",
-        isolated=True,  # Does not affect main conversation state
-    )
+            }],
+            reasoning_effort="low",
+            isolated=True,  # Does not affect main conversation state
+        )
+    except Exception as e:  # a failed side question must not end the run
+        print(f"\n⚠️ Could not get an answer ({type(e).__name__}: {e}).\n")
+        return f"(error answering question: {type(e).__name__}: {e})"
     
     # Extract answer from unified response
     answer = None
