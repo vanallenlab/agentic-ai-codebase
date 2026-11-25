@@ -15,13 +15,13 @@ The big cohorts get fewer tasks because each of their steps is slower.
 
 ## Per machine
 
-1. Create the VM: 16 vCPU / 128 GB, and a local disk for run folders of ~500 GB
-   (~20 GB per run; ~13 GB with `PRUNE_CHECKPOINTS=1`): either a 550 GB boot disk or an extra disk
-   mounted at `~/agent-runs`. Attach the shared HTAN data disk **read-only**.
+1. Create the VMs from your computer: `bash scripts/htan/create_machines.sh` (5 x n2-highmem-16, 550 GB boot disk,
+   `htan-datasets` attached read-only; stops/detaches the old VM's read-write attachment if you confirm).
+   The boot disk holds the run folders (~20 GB per run; ~13 GB with `PRUNE_CHECKPOINTS=1`).
 2. `git clone https://github.com/vanallenlab/agentic-ai-codebase && cd agentic-ai-codebase`
 3. Put the `export ANTHROPIC_API_KEY=...` (and `NCBI_API_KEY`, `WANDB_API_KEY`) lines in `~/.bashrc`;
    `docker login ghcr.io` (the image is private: a GitHub token with `read:packages`).
-4. `bash scripts/htan/setup_machine.sh /dev/disk/by-id/google-<data disk device name>`
+4. `bash scripts/htan/setup_machine.sh /dev/disk/by-id/google-htan-datasets`
    (installs docker/tmux/uv if missing, mounts the data disk ro at `~/htan-disk-mt`, pulls the image).
 5. `DRY_RUN=1 bash scripts/htan/machine_<N>.sh`, then `bash scripts/htan/machine_<N>.sh`.
 6. Watch: `tmux ls`, `tmux attach -t htan_<cohort>`; finished tasks: `ls output/*/*/DONE`.
