@@ -40,11 +40,15 @@ echo "== $CONFIG  (tmux session: $NAME)"
 
 # --- 1. Mounts (they do not survive a reboot; this re-creates them) -----------
 # On another machine without a separate disk, DATA_MNT and RUNS can be plain folders.
+# A disk attached read-only (shared by several VMs) is mounted ro,noload (no journal replay).
 if [ ! -d "$DATA_MNT/htan_datasets" ] && ! findmnt -n "$DATA_MNT" >/dev/null && [ -b "$DATA_DEV" ]; then
-    sudo mount -o rw "$DATA_DEV" "$DATA_MNT"
+    sudo mkdir -p "$DATA_MNT"
+    if [ "$(sudo blockdev --getro "$DATA_DEV")" = 1 ]; then sudo mount -o ro,noload "$DATA_DEV" "$DATA_MNT"
+    else sudo mount -o rw "$DATA_DEV" "$DATA_MNT"; fi
 fi
 [ -d "$DATA_MNT/htan_datasets" ] || { echo "no htan_datasets/ in $DATA_MNT (set DATA_MNT=...)"; exit 1; }
-if [ -d "$DATA_MNT/agent_runs" ] && [ "$RUNS" != "$DATA_MNT/agent_runs" ] && ! findmnt -n "$RUNS" >/dev/null; then
+# Run folders go on the data disk only when it is writable; otherwise RUNS is a local folder.
+if [ -w "$DATA_MNT/agent_runs" ] && [ "$RUNS" != "$DATA_MNT/agent_runs" ] && ! findmnt -n "$RUNS" >/dev/null; then
     mkdir -p "$RUNS"; sudo mount --bind "$DATA_MNT/agent_runs" "$RUNS"    # neutral path for the agent
 fi
 mkdir -p "$RUNS" output
