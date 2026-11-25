@@ -9,9 +9,9 @@
 #   PROJECT=my-project ZONE=us-central1-a N=5 bash scripts/htan/create_machines.sh
 #   DRY_RUN=1 bash scripts/htan/create_machines.sh           # print the commands only
 #
-# A disk can be attached read-only to several VMs only if NO VM has it read-write, and only
-# in the disk's own zone. If it is still attached read-write (e.g. to the old VM), the script
-# offers to stop that VM and detach the disk first.
+# Detach htan-datasets from any VM that has it read-write before running this: a disk can be
+# attached read-only to several VMs only if no VM has it read-write (and only in its own zone).
+# 5 x n2-highmem-16 needs 80 N2 CPUs of quota in the region.
 #
 # Afterwards, on each machine: see scripts/htan/README.md (clone, keys, docker login,
 # setup_machine.sh /dev/disk/by-id/google-htan-datasets, machine_<N>.sh).
@@ -32,36 +32,7 @@ run() { echo "+ $*"; [ "${DRY_RUN:-0}" = 1 ] || "$@"; }
 
 echo "project $PROJECT, zone $ZONE, disk $DISK, $N x $MACHINE_TYPE"
 
-# --- 1. The data disk: exists here, type supports read-only multi-attach, not attached rw ----
-info=$($G compute disks describe "$DISK" --zone "$ZONE" --format='value(type.basename(),sizeGb)') \
-    || { echo "disk $DISK not found in $ZONE (it must be in the same zone as the VMs)"; exit 1; }
-echo "disk: $info"
-users=$($G compute disks describe "$DISK" --zone "$ZONE" --format='value(users.basename())' | tr ';' ' ')
-for vm in $users; do
-    mode=$($G compute instances describe "$vm" --zone "$ZONE" --format=json \
-           | python3 -c "import json,sys; d=json.load(sys.stdin); print(next(x['mode'] for x in d['disks'] if x['source'].endswith('/$DISK')))")
-    [ "$mode" = READ_ONLY ] && continue
-    echo "$DISK is attached READ_WRITE to $vm; it must be detached before read-only attachment."
-    read -r -p "Stop $vm and detach $DISK from it now? [y/N] " a
-    [ "$a" = y ] || { echo "aborted"; exit 1; }
-    run $G compute instances stop "$vm" --zone "$ZONE"
-    run $G compute instances detach-disk "$vm" --disk "$DISK" --zone "$ZONE"
-done
-
-# --- 2. CPU quota for the region -----------------------------------------------------------
-REGION=${ZONE%-*}
-need=$((16 * N))
-$G compute regions describe "$REGION" --format=json | python3 -c "
-import json, sys
-need = $need
-for q in json.load(sys.stdin)['quotas']:
-    if q['metric'] in ('N2_CPUS', 'CPUS'):
-        free = q['limit'] - q['usage']
-        print(f\"quota {q['metric']}: {free:.0f} free of {q['limit']:.0f} (need {need})\")
-        if free < need: print('  -> not enough: request more in IAM & Admin > Quotas, or use N=fewer')
-"
-
-# --- 3. Create the VMs ---------------------------------------------------------------------
+# --- Create the VMs ---------------------------------------------------------------------
 for i in $(seq 1 "$N"); do
     name=$PREFIX-$i
     if $G compute instances describe "$name" --zone "$ZONE" >/dev/null 2>&1; then
