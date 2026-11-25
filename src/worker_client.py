@@ -206,10 +206,13 @@ class WorkerClient(_BaseClient):
                 continue
             if name in os.environ:
                 cmd += ["-e", name]  # value read from our env; never on the command line
-        if c.get("memory"):
-            cmd += ["--memory", str(c["memory"]), "--memory-swap", str(c["memory"])]
-        if c.get("cpus"):
-            cmd += ["--cpus", str(c["cpus"])]
+        # M3A_WORKER_MEMORY / M3A_WORKER_CPUS override the config for a machine of another size.
+        memory = os.environ.get("M3A_WORKER_MEMORY") or c.get("memory")
+        cpus = os.environ.get("M3A_WORKER_CPUS") or c.get("cpus")
+        if memory:
+            cmd += ["--memory", str(memory), "--memory-swap", str(memory)]
+        if cpus:
+            cmd += ["--cpus", str(cpus)]
         cmd += ["--pids-limit", str(c.get("pids_limit", 4096))]
         if c.get("network", True) is False:
             cmd += ["--network", "none"]

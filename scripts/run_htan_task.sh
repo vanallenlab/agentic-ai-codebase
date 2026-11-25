@@ -6,6 +6,14 @@
 #   bash scripts/run_htan_task.sh config/htan/opus-4-6/cesc/molecular_pik3ca.yaml   # default
 #   bash scripts/run_htan_task.sh config/htan/opus-4-6/gbm/celltype_annotation.yaml
 #   DRY_RUN=1 bash scripts/run_htan_task.sh [CONFIG]      # all checks, no run
+#   FOREGROUND=1 bash scripts/run_htan_task.sh CONFIG     # run here, no tmux (used by run_htan_cohort.sh)
+#
+# Paths can be overridden for another machine (defaults are this VM's layout):
+#   DATA_MNT  folder that holds htan_datasets/ (data/datasets-mt must point to it)  [~/htan-disk-mt]
+#   RUNS      where run folders go (output/runs must point to it; needs ~20 GB/run) [~/agent-runs]
+#   DATA_DEV  block device to mount at DATA_MNT if it is not mounted               [/dev/sdb]
+#   M3A_WORKER_MEMORY / M3A_WORKER_CPUS   worker container limits [24g / 8 from leakage_guard.yaml];
+#             set to ~85% of the machine's RAM on a bigger machine (e.g. M3A_WORKER_MEMORY=100g)
 #
 # You do NOT start Docker yourself: the harness (run_agent_htan.py) runs on this VM and
 # starts one isolated worker container per run (only src/, the run folder and the task's
@@ -19,22 +27,32 @@
 # =============================================================================
 set -euo pipefail
 
-REPO=/home/sjohri/agentic-ai-codebase
+REPO=$(cd "$(dirname "$0")/.." && pwd)
 CONFIG=${1:-config/htan/opus-4-6/cesc/molecular_pik3ca.yaml}
 IMAGE=ghcr.io/vanallenlab/agentic-sc-runtime:v3
-DATA_MNT=/home/sjohri/htan-disk-mt
-RUNS=/home/sjohri/agent-runs
+DATA_MNT=${DATA_MNT:-$HOME/htan-disk-mt}
+RUNS=${RUNS:-$HOME/agent-runs}
+DATA_DEV=${DATA_DEV:-/dev/sdb}
 cd "$REPO"
 [ -f "$CONFIG" ] || { echo "config not found: $CONFIG"; exit 1; }
 NAME=$(echo "$CONFIG" | sed -E 's#.*/([^/]+)/([^/]+)\.yaml$#\1_\2#')     # e.g. cesc_molecular_pik3ca
 echo "== $CONFIG  (tmux session: $NAME)"
 
 # --- 1. Mounts (they do not survive a reboot; this re-creates them) -----------
-findmnt -n "$DATA_MNT" >/dev/null || sudo mount -o rw /dev/sdb "$DATA_MNT"
-findmnt -n "$RUNS" >/dev/null || { mkdir -p "$RUNS"; sudo mount --bind "$DATA_MNT/agent_runs" "$RUNS"; }
-[ "$(readlink output/runs)" = "$RUNS" ] || { echo "output/runs must be a symlink to $RUNS"; exit 1; }
-[ "$(readlink -f data/datasets-mt)" = "$DATA_MNT" ] || { echo "data/datasets-mt must point to $DATA_MNT"; exit 1; }
-echo "mounts OK: data disk $(findmnt -no OPTIONS $DATA_MNT | cut -d, -f1), runs at $RUNS"
+# On another machine without a separate disk, DATA_MNT and RUNS can be plain folders.
+if [ ! -d "$DATA_MNT/htan_datasets" ] && ! findmnt -n "$DATA_MNT" >/dev/null && [ -b "$DATA_DEV" ]; then
+    sudo mount -o rw "$DATA_DEV" "$DATA_MNT"
+fi
+[ -d "$DATA_MNT/htan_datasets" ] || { echo "no htan_datasets/ in $DATA_MNT (set DATA_MNT=...)"; exit 1; }
+if [ -d "$DATA_MNT/agent_runs" ] && [ "$RUNS" != "$DATA_MNT/agent_runs" ] && ! findmnt -n "$RUNS" >/dev/null; then
+    mkdir -p "$RUNS"; sudo mount --bind "$DATA_MNT/agent_runs" "$RUNS"    # neutral path for the agent
+fi
+mkdir -p "$RUNS" output
+[ -e data/datasets-mt ] || ln -s "$DATA_MNT" data/datasets-mt
+[ -e output/runs ] || ln -s "$RUNS" output/runs
+[ "$(readlink -f output/runs)" = "$(readlink -f "$RUNS")" ] || { echo "output/runs must be a symlink to $RUNS"; exit 1; }
+[ "$(readlink -f data/datasets-mt)" = "$(readlink -f "$DATA_MNT")" ] || { echo "data/datasets-mt must point to $DATA_MNT"; exit 1; }
+echo "paths OK: data $DATA_MNT, runs $RUNS"
 
 # --- 2. Free disk space ---------------------------------------------------------
 free_gb() { df -BG --output=avail "$1" | tail -1 | tr -dc 0-9; }
@@ -85,9 +103,13 @@ for k in ("scrna_data_path", "scatac_data_path", "scatac_snap_path", "cnmf_usage
             f.visititems(add)
         total += size
     print(f"  {k:26s} {size/1e9:6.2f} GB  {p.name}")
-limit = float(str(c.get("memory", "24g")).rstrip("gG"))
+import os
+limit = float(str(os.environ.get("M3A_WORKER_MEMORY") or c.get("memory", "24g")).rstrip("gG"))
 print(f"  data loaded in the worker: ~{total/1e9:.1f} GB of the {limit:.0f} GB container limit"
       + ("  <-- WARNING: little room for the agent's copies" if total / 1e9 > 0.6 * limit else ""))
+if total / 1e9 > 0.9 * limit and os.environ.get("ALLOW_LOW_MEMORY") != "1":
+    sys.exit(f"the data alone needs ~{total/1e9:.0f} GB: set M3A_WORKER_MEMORY to at least "
+             f"{int(total/1e9*1.6)}g on a machine with that much RAM (ALLOW_LOW_MEMORY=1 to try anyway)")
 EOF
 echo "deliverables:"; sed -n '/^### Deliverables/,/^### /p' "$(uv run python -c "
 import sys; sys.path.insert(0,'.')
@@ -95,17 +117,25 @@ from src.config import load_config; print(load_config('$CONFIG')['task_file'])")
 
 [ "${DRY_RUN:-0}" = 1 ] && { echo "DRY_RUN=1: all checks passed, not starting the run"; exit 0; }
 
+mkdir -p logs "$RUNS/_wandb"
+LOG=logs/${NAME}_$(date +%Y%m%d_%H%M%S).log
+if [ "${FOREGROUND:-0}" = 1 ]; then          # keys are already in this shell's environment
+    [ -n "${WANDB_API_KEY:-}" ] || grep -qs api.wandb.ai ~/.netrc || export WANDB_MODE=disabled
+    export WANDB_DIR=$RUNS/_wandb
+    echo "log: $LOG"
+    uv run run_agent_htan.py --config "$CONFIG" 2>&1 | tee -i "$LOG"
+    exit "${PIPESTATUS[0]}"
+fi
+
 # --- 6. Start the run in tmux (survives SSH disconnects) ---------------------------
 # Keys are loaded inside the session from ~/.bashrc, never put on a command line (ps).
 tmux has-session -t "$NAME" 2>/dev/null && { echo "tmux session $NAME already exists (tmux attach -t $NAME)"; exit 1; }
-mkdir -p logs "$RUNS/_wandb"
-LOG=logs/${NAME}_$(date +%Y%m%d_%H%M%S).log
 tmux new-session -d -s "$NAME" "bash -c '
   cd $REPO
   eval \"\$(grep -E \"^export (ANTHROPIC_API_KEY|NCBI_API_KEY|WANDB_API_KEY)=\" ~/.bashrc)\"
   [ -n \"\${WANDB_API_KEY:-}\" ] || grep -qs api.wandb.ai ~/.netrc || export WANDB_MODE=disabled
   export WANDB_DIR=$RUNS/_wandb PATH=\"\$HOME/.local/bin:\$PATH\"
-  uv run run_agent_htan.py --config $CONFIG 2>&1 | tee $LOG
+  uv run run_agent_htan.py --config $CONFIG 2>&1 | tee -i $LOG
   echo \"run finished (exit \${PIPESTATUS[0]}); press Enter to close\"; read'"
 echo
 echo "Started: tmux session '$NAME', log $LOG"
