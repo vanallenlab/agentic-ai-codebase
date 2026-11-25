@@ -29,6 +29,22 @@ class TokenTracker:
     model: str = ""
     peak_saturation_pct: float = 0.0
     total_images_sent: int = 0  # Count of images sent to model
+    keepalive_pings: int = 0              # cache keep-alive re-sends during long tool calls
+    keepalive_cache_read: int = 0         # tokens they read from the cache
+    keepalive_cost_usd: float = 0.0       # included in cumulative_cost_usd
+
+    def add_keepalive(self, usage) -> None:
+        """Account a max_tokens=0 keep-alive ping (src/cache_keepalive.py): cost only, so the
+        per-step token counts and context saturation stay those of real requests."""
+        from src.config import estimate_cost_usd
+        read = getattr(usage, "cache_read_input_tokens", 0) or 0
+        write = getattr(usage, "cache_creation_input_tokens", 0) or 0
+        uncached = getattr(usage, "input_tokens", 0) or 0
+        cost = estimate_cost_usd(self.model, uncached, write, read, getattr(usage, "output_tokens", 0) or 0)
+        self.keepalive_pings += 1
+        self.keepalive_cache_read += read
+        self.keepalive_cost_usd += cost
+        self.cumulative_cost_usd += cost
     
     def process_usage(self, usage, images_sent: int = 0) -> dict:
         """Process API usage and return token info dict. Updates cumulative counts.

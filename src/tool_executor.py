@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 from src.hooks import pre_tool_call_hook, REASONING_FIELDS, RETRY_REASONING_FIELDS
+from src.cache_keepalive import CacheKeepalive
 from src.logging_utils import log
 from src.wandb_utils import log_execution, log_plot
 from src.harness_guard import (TerminationRequested, prepare_image_for_model, redact_run_paths,
@@ -159,7 +160,8 @@ def execute_tool_call(tc, state, output_dir, token_info=None):
         resp = {"success": False, "body": pre_error, "notes": [], "plots": [],
                 "data_changes": "", "args_preview": args}
     else:
-        resp = state.runtime.call(name, args, exec_id)
+        with CacheKeepalive(state):   # long tools: keep the prompt cache from expiring
+            resp = state.runtime.call(name, args, exec_id)
 
     success = bool(resp.get("success"))
     plot_paths = [p for p in (resp.get("plots") or []) if Path(p).is_file()]

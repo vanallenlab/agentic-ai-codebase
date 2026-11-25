@@ -18,6 +18,7 @@ llm:
   max_tokens: 64000
   effort: medium
   thinking_display: summarized
+  cache_keepalive_minutes: 30   # keep the prompt cache alive through tool calls up to 30 min
 logging:
   enabled: true
   project: agentic-ai-htan-v2

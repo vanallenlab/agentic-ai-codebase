@@ -8,6 +8,7 @@ handling message format conversion, API differences, and response parsing.
 import copy
 import json
 import os
+import time
 from typing import Any, Optional
 from dataclasses import dataclass
 
@@ -72,6 +73,9 @@ class LLMClient:
     max_images_per_request: int = 600
     prompt_caching: bool = True   # Anthropic: cache the conversation prefix (billing only; outputs unchanged)
     retry_total_seconds: float = 1800.0  # extra patience on 429/5xx/overloaded beyond SDK retries
+    # Anthropic: while a tool runs, keep the 5-minute prompt cache alive for up to this many
+    # minutes with max_tokens=0 re-sends of the last request (cache read only; 0 = off).
+    cache_keepalive_minutes: float = 30.0
 
     def __init__(self, provider: str, model: str, **kwargs):
         self.provider = provider.lower()
@@ -122,6 +126,10 @@ class LLMClient:
         # System prompt is stored separately (Anthropic uses a top-level `system` param).
         self._conversation_history: list[dict] = []
         self._system_prompt: Optional[str] = None
+        # Last main-conversation request (for cache keep-alive pings) and when it started:
+        # the cache entry's 5-minute lifetime is counted from the start of a request.
+        self._last_cached_request: Optional[dict] = None
+        self._last_cache_touch: Optional[float] = None
     
     # -------------------------------------------------------------------------
     # Public API
@@ -163,6 +171,26 @@ class LLMClient:
             else:
                 return self._create_anthropic(messages, tools, reasoning_effort, tool_choice,
                                               parallel_tool_calls=parallel_tool_calls)
+
+    # -------------------------------------------------------------------------
+    # Prompt-cache keep-alive (Anthropic)
+    # -------------------------------------------------------------------------
+    def seconds_since_cache_touch(self) -> Optional[float]:
+        if self.provider != "anthropic" or self._last_cached_request is None:
+            return None
+        return time.monotonic() - self._last_cache_touch
+
+    def cache_keepalive(self):
+        """Re-send the last main request with max_tokens=0: the API only reads the cached
+        prefix (refreshing its 5-minute timer) and generates nothing. Returns the usage.
+        Safe to call from another thread while the main thread waits on a tool."""
+        kw = self._last_cached_request
+        if kw is None:
+            return None
+        started = time.monotonic()
+        resp = self.client.messages.create(**{**kw, "max_tokens": 0})
+        self._last_cache_touch = started
+        return resp.usage
 
     # -------------------------------------------------------------------------
     # Retry wrapper (on top of the SDK's own retries)
@@ -376,6 +404,7 @@ class LLMClient:
                 return stream.get_final_message()
 
         import anthropic
+        started = time.monotonic()
         try:
             response = self._with_retries(lambda: _call(kwargs))
         except anthropic.BadRequestError as e:
@@ -387,6 +416,10 @@ class LLMClient:
                 response = self._with_retries(lambda: _call(kwargs))
             else:
                 raise
+        if self.prompt_caching and not _isolated_mode:
+            # Snapshot of exactly what was sent, so a keep-alive re-send matches the cached prefix.
+            self._last_cached_request = {**kwargs, "messages": list(kwargs["messages"])}
+            self._last_cache_touch = started
 
         # --- Step 4: Append assistant response to history ---
         # Serialize the response content blocks to plain dicts so they can be
@@ -742,5 +775,7 @@ def create_llm_client_from_config(config: dict) -> tuple[LLMClient, str]:
         client.max_images_per_request = int(llm_config["max_images_per_request"])
     if llm_config.get("prompt_caching") is not None:
         client.prompt_caching = bool(llm_config["prompt_caching"])
+    if llm_config.get("cache_keepalive_minutes") is not None:
+        client.cache_keepalive_minutes = float(llm_config["cache_keepalive_minutes"])
 
     return client, model
