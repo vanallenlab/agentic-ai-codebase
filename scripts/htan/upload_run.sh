@@ -45,10 +45,11 @@ if [ "${PRUNE_CHECKPOINTS:-1}" = 1 ] && [ -d "$RUN_DIR/checkpoints" ]; then
 fi
 size=$(du -sh "$RUN_DIR" | cut -f1)
 echo "⬆️  uploading $RUN_DIR ($size) -> $DEST/agent-runs/$RUN_ID/"
+mkdir -p logs; LOG=logs/upload_$RUN_ID.log    # gcloud prints a line per file; kept out of the tmux window
 ok=0
 for attempt in 1 2 3; do
-    if gcloud storage rsync -r -q --ignore-symlinks "$RUN_DIR" "$DEST/agent-runs/$RUN_ID" \
-        && gcloud storage rsync -r -q "$OUT" "$DEST/output/$REL_OUT"; then
+    if gcloud storage rsync -r -q --ignore-symlinks "$RUN_DIR" "$DEST/agent-runs/$RUN_ID" >>"$LOG" 2>&1 \
+        && gcloud storage rsync -r -q "$OUT" "$DEST/output/$REL_OUT" >>"$LOG" 2>&1; then
         read -r rn rb < <(remote_stats)
         ln=$(local_count); lb=$(local_bytes)
         if [ "$rn" = "$ln" ] && [ "$rb" = "$lb" ]; then ok=1; break; fi
@@ -57,7 +58,8 @@ for attempt in 1 2 3; do
     sleep ${UPLOAD_RETRY_S:-$((attempt * 30))}
 done
 if [ "$ok" != 1 ]; then
-    echo "!! upload of $RUN_DIR failed; the local copy is kept (run this script again to retry)"
+    tail -5 "$LOG" | sed 's/^/   gcloud: /'
+    echo "!! upload of $RUN_DIR failed; the local copy is kept (run this script again to retry; log: $LOG)"
     exit 1
 fi
 

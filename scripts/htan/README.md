@@ -37,16 +37,16 @@ deleted locally once the upload is verified (same files and bytes in the bucket)
 the local copy is kept and the runs go on. Pointer files and DONE markers stay on the machine, so
 finished tasks are still skipped.
 
-1. Once, from your computer: `gcloud storage buckets create gs://<bucket> --location us-central1`
-   (same region as the VMs, so the uploads are free and fast).
-2. On each machine: `echo 'export UPLOAD_TO=gs://<bucket>/htan' >> ~/.bashrc`.
+1. The bucket is `gs://m3a-runs-storage` (project vanallen-sjohri, us-central1, the VMs' region, so uploads
+   are free and fast; private, uniform access).
+2. On each machine: `echo 'export UPLOAD_TO=gs://m3a-runs-storage/htan' >> ~/.bashrc`.
 3. Upload the runs already on the machine (the Opus 5.5 ones) and free their space:
    `DRY_RUN=1 bash scripts/htan/upload_runs.sh` to list them, then `bash scripts/htan/upload_runs.sh`.
 4. `DRY_RUN=1 bash scripts/htan/machine_<N>.sh` now also checks that the bucket is writable.
 
 Layout in the bucket: `agent-runs/<run id>/` (the run folders) and `output/<model>/<cohort>/<task>/`
 (pointer files naming each run id). Get everything back with
-`gcloud storage rsync -r gs://<bucket>/htan/agent-runs ~/agent-runs` (and `.../output output`).
+`gcloud storage rsync -r gs://m3a-runs-storage/htan/agent-runs ~/agent-runs` (and `.../output output`).
 
 Options (environment variables before the command):
 - `MODELS="gpt-6-1-terra glm-5-3-flash"` runs only those sets, in that order (default: all of them;
