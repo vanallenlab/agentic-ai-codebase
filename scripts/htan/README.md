@@ -27,7 +27,7 @@ The big cohorts get fewer tasks because each of their steps is slower.
 6. Watch: `tmux ls`, `tmux attach -t htan_<cohort>`; finished tasks: `ls output/opus-5-5/*/*/DONE`.
 
 Other models: `MODEL_DIR=<set> bash scripts/htan/machine_<N>.sh` with a set from `config/htan/`
-(`gpt-6-2-sol`, `gpt-6-1-terra`, `qwen3-8-27b`, `muse-spark-open`, `muse-glimmer-30b`, `kimi-k3-1-pro`,
+(`gpt-6-2-sol`, `gpt-6-1-terra`, `muse-spark-open`, `muse-glimmer-30b`, `kimi-k3-1-pro`,
 `glm-5-3-flash`, or one made with
 `scripts/make_model_configs.py`). The pre-flight checks the matching key (`OPENAI_API_KEY`,
 `OPENROUTER_API_KEY`) in `~/.bashrc`. Results go to `output/<set>/`.

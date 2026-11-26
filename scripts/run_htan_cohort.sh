@@ -7,7 +7,7 @@
 #   ONLY="celltype_annotation molecular_pik3ca" bash scripts/run_htan_cohort.sh cesc
 #   SKIP="pancancer_clinical_survival" bash scripts/run_htan_cohort.sh cesc
 #   MODEL_DIR=opus-5-5 (default) picks config/htan/<MODEL_DIR>/<COHORT>/*.yaml; other sets: gpt-6-2-sol,
-#     gpt-6-1-terra, qwen3-8-27b, muse-spark-open, muse-glimmer-30b, kimi-k3-1-pro, glm-5-3-flash (make more with scripts/make_model_configs.py)
+#     gpt-6-1-terra, muse-spark-open, muse-glimmer-30b, kimi-k3-1-pro, glm-5-3-flash (make more with scripts/make_model_configs.py)
 #
 # Each task goes through scripts/run_htan_task.sh (pre-flight checks, leakage guard, one
 # isolated worker container). Runs are sequential because each worker may use up to 24 GB.
