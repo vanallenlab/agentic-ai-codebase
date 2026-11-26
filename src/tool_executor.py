@@ -138,6 +138,8 @@ def execute_tool_call(tc, state, output_dir, token_info=None):
     reasoning = None
     if pre_error is None and getattr(state, "capture_telemetry", True):
         last_failure = recent_failures[-1] if recent_failures else None
+        if hasattr(state.client, "last_side_usage"):
+            state.client.last_side_usage, state.client.last_side_model = None, None
         reasoning = _safe(
             pre_tool_call_hook,
             client=state.client,
@@ -153,6 +155,12 @@ def execute_tool_call(tc, state, output_dir, token_info=None):
             what="reasoning hook",
         )
     reasoning_data, intent = _extract_reasoning(reasoning)
+    side_usage = getattr(state.client, "last_side_usage", None)
+    if side_usage is not None:
+        served_by = getattr(state.client, "last_side_model", None)
+        _safe(state.tokens.add_side_call, side_usage, served_by, what="telemetry cost")
+        if served_by and reasoning_data:
+            reasoning_data["telemetry_model"] = served_by   # who wrote this step's telemetry
 
     # --- 3. Execute in the tool runtime (worker) ---
     if pre_error is not None:

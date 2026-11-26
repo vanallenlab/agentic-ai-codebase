@@ -32,6 +32,28 @@ class TokenTracker:
     keepalive_pings: int = 0              # cache keep-alive re-sends during long tool calls
     keepalive_cache_read: int = 0         # tokens they read from the cache
     keepalive_cost_usd: float = 0.0       # included in cumulative_cost_usd
+    side_calls: int = 0                   # telemetry-hook calls (isolated side calls)
+    side_call_cost_usd: float = 0.0       # their cost, included in cumulative_cost_usd
+    side_call_fallbacks: int = 0          # side calls answered by a fallback model
+
+    def add_side_call(self, usage, served_by: str = None) -> None:
+        """Account an isolated side call (telemetry hook): cost only, like keep-alive pings."""
+        from src.config import estimate_cost_usd
+        billed = getattr(usage, "cost_usd", None)
+        if billed is None:
+            det = getattr(usage, "input_tokens_details", None)
+            cached = getattr(det, "cached_tokens", 0) or 0
+            write = getattr(det, "cache_write_tokens", 0) or 0
+            uncached = getattr(det, "uncached_tokens", None)
+            if uncached is None:
+                uncached = (getattr(usage, "input_tokens", 0) or 0) - cached
+            billed = estimate_cost_usd(served_by or self.model, uncached, write, cached,
+                                       getattr(usage, "output_tokens", 0) or 0)
+        self.side_calls += 1
+        self.side_call_cost_usd += float(billed)
+        self.cumulative_cost_usd += float(billed)
+        if served_by and self.model and served_by != self.model:
+            self.side_call_fallbacks += 1
 
     def add_keepalive(self, usage) -> None:
         """Account a max_tokens=0 keep-alive ping (src/cache_keepalive.py): cost only, so the

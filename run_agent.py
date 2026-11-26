@@ -74,8 +74,13 @@ def init_services(config: dict, task: str, user_name: str = None):
             print(f"⚠️ wandb init failed ({type(e).__name__}: {e}); continuing with local logs only "
                   f"(conversation.jsonl / steps.jsonl / agent.log). Set logging.required: true to make this fatal.")
         
-        # Initialize weave (uses same project/entity as wandb)
+        # Initialize weave (uses same project/entity as wandb). WANDB_MODE=disabled/offline (or
+        # WEAVE_DISABLED=true) turns it off too, so "no W&B" really sends nothing.
         weave_full_project = f"{log_entity}/{log_project}" if log_entity else log_project
+        if (os.environ.get("WANDB_MODE", "").lower() in ("disabled", "offline", "dryrun")
+                or os.environ.get("WEAVE_DISABLED", "").lower() in ("1", "true", "yes")):
+            print("🔍 Weave tracing off (WANDB_MODE / WEAVE_DISABLED)")
+            return wandb_run
         try:
             weave.init(weave_full_project)
             print(f"🔍 Weave tracing initialized for project: {weave_full_project}")

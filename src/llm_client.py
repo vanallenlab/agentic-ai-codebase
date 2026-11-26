@@ -120,6 +120,9 @@ class LLMClient:
     # Anthropic: while a tool runs, keep the 5-minute prompt cache alive for up to this many
     # minutes with max_tokens=0 re-sends of the last request (cache read only; 0 = off).
     cache_keepalive_minutes: float = 30.0
+    # Anthropic: model that answers a side call (telemetry hook) when the main model's safety
+    # classifier declines it, via the API's server-side refusal fallback (None = no fallback).
+    side_call_fallback_model: Optional[str] = None
 
     def __init__(self, provider: str, model: str, **kwargs):
         self.provider = provider.lower()
@@ -138,6 +141,10 @@ class LLMClient:
         self.max_output_tokens: Optional[int] = None
         self.accepts_images: Optional[bool] = None
         self.served_by: Optional[str] = None   # OpenRouter: host that served the last request
+        # Usage and serving model of the last isolated side call (telemetry hook), so the
+        # harness can add its cost to the run; reset by the caller before each side call.
+        self.last_side_usage = None
+        self.last_side_model: Optional[str] = None
 
         if self.provider == "openai":
             self._init_openai(**kwargs)
@@ -240,6 +247,16 @@ class LLMClient:
         previous_response_id: Optional[str] = None,
         isolated: bool = False,
     ) -> LLMResponse:
+        response = self._create(messages, tools, reasoning_effort, store, parallel_tool_calls,
+                                tool_choice, previous_response_id, isolated)
+        if isolated:
+            self.last_side_usage = response.usage
+            raw_model = getattr(response.raw_response, "model", None)
+            self.last_side_model = raw_model if isinstance(raw_model, str) else self.model
+        return response
+
+    def _create(self, messages, tools, reasoning_effort, store, parallel_tool_calls,
+                tool_choice, previous_response_id, isolated) -> LLMResponse:
         if self.provider in ("openai", "azure_openai"):
             return self._create_openai_responses(
                 messages, tools, reasoning_effort, store=store and not isolated,
@@ -734,10 +751,20 @@ class LLMClient:
         schema = copy.deepcopy(tool.get("input_schema") or {"type": "object", "properties": {}})
         schema.setdefault("additionalProperties", False)
         kw = {k: v for k, v in kwargs.items() if k not in ("tools", "tool_choice")}
+        # A short JSON answer: keep max_tokens small (a large value needs streaming in the SDK).
+        kw["max_tokens"] = min(int(kw.get("max_tokens") or 8192), 8192)
         kw["output_config"] = {**(kw.get("output_config") or {}),
                                "format": {"type": "json_schema", "schema": schema}}
-        response = self._with_retries(lambda: self.client.messages.create(**kw))
-        text = "".join(getattr(b, "text", "") for b in response.content
+        if self.side_call_fallback_model:
+            # Server-side refusal fallback (beta): if the main model's classifier declines, the
+            # API re-runs the request on the fallback model within the same call.
+            fb = self.side_call_fallback_model
+            response = self._with_retries(lambda: self.client.beta.messages.create(
+                **kw, betas=["server-side-fallback-2026-07-01"],
+                extra_body={"fallbacks": [{"model": fb}]}))
+        else:
+            response = self._with_retries(lambda: self.client.messages.create(**kw))
+        text = "".join(getattr(b, "text", None) or "" for b in response.content
                        if self._get_block_type(b) == "text")
         try:
             args = json.loads(text)
@@ -753,10 +780,22 @@ class LLMClient:
         u = response.usage
         cache_read = getattr(u, "cache_read_input_tokens", 0) or 0
         cache_write = getattr(u, "cache_creation_input_tokens", 0) or 0
+        # With a fallback, top-level usage covers only the attempt that answered; the cost is
+        # the sum over every attempt (usage.iterations), each at its own model's price.
+        cost = None
+        iterations = getattr(u, "iterations", None) or []
+        if iterations:
+            from src.config import estimate_cost_usd
+            cost = sum(estimate_cost_usd(getattr(it, "model", None) or self.model,
+                                         getattr(it, "input_tokens", 0) or 0,
+                                         getattr(it, "cache_creation_input_tokens", 0) or 0,
+                                         getattr(it, "cache_read_input_tokens", 0) or 0,
+                                         getattr(it, "output_tokens", 0) or 0) for it in iterations)
         usage = UsageInfo(input_tokens=(u.input_tokens or 0) + cache_read + cache_write,
                           output_tokens=u.output_tokens,
                           input_tokens_details=_details(cached_tokens=cache_read, cache_write_tokens=cache_write,
-                                                        uncached_tokens=u.input_tokens or 0))
+                                                        uncached_tokens=u.input_tokens or 0),
+                          cost_usd=cost)
         return LLMResponse(id=response.id, provider="anthropic", output=output, usage=usage,
                            raw_response=response, stop_reason=getattr(response, "stop_reason", None))
 
@@ -1206,5 +1245,7 @@ def create_llm_client_from_config(config: dict) -> tuple[LLMClient, str]:
         client.prompt_caching = bool(llm_config["prompt_caching"])
     if llm_config.get("cache_keepalive_minutes") is not None:
         client.cache_keepalive_minutes = float(llm_config["cache_keepalive_minutes"])
+    if llm_config.get("telemetry_fallback_model"):
+        client.side_call_fallback_model = str(llm_config["telemetry_fallback_model"])
 
     return client, model
