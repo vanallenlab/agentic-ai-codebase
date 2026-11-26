@@ -6,7 +6,7 @@
 #
 # POINTER_JSON is the file the harness writes in the task's output folder
 # (output/<model>/<cohort>/<task>/run_<stamp>_<id>.json); it names the run folder (~/agent-runs/<id>).
-# Uploads:
+# checkpoints/ is deleted first (PRUNE_CHECKPOINTS=0 keeps and uploads it). Uploads:
 #   <run folder>            -> GS_PREFIX/agent-runs/<id>/
 #   the task's output folder -> GS_PREFIX/output/<model>/<cohort>/<task>/   (pointer files, DONE)
 # The local run folder is deleted only after the upload is verified (same number of files and
@@ -37,6 +37,12 @@ remote_stats() {   # "<files> <bytes>" under the run's prefix in the bucket
         | awk '$1 ~ /^[0-9]+$/ && $3 ~ /^gs:/ {n++; s+=$1} END {print n+0, s+0}'
 }
 
+# checkpoints/ (~7 GB: data snapshots a run's own worker restarts from) are not needed once the run
+# has ended, so they are deleted before uploading; PRUNE_CHECKPOINTS=0 uploads them too.
+if [ "${PRUNE_CHECKPOINTS:-1}" = 1 ] && [ -d "$RUN_DIR/checkpoints" ]; then
+    echo "pruning $RUN_DIR/checkpoints ($(du -sh "$RUN_DIR/checkpoints" | cut -f1)) before the upload"
+    rm -rf "$RUN_DIR/checkpoints"
+fi
 size=$(du -sh "$RUN_DIR" | cut -f1)
 echo "⬆️  uploading $RUN_DIR ($size) -> $DEST/agent-runs/$RUN_ID/"
 ok=0

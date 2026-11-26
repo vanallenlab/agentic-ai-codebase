@@ -32,7 +32,7 @@ The big cohorts get fewer tasks because each of their steps is slower.
 ## Results to a bucket (so the machine disks never fill up)
 
 A full-size run is ~13-30 GB, so seven models do not fit on a 550 GB disk. With `UPLOAD_TO` set,
-each run folder is uploaded to Cloud Storage as soon as its task ends (done, failed or stopped) and
+each run folder (without its `checkpoints/`) is uploaded to Cloud Storage as soon as its task ends (done, failed or stopped) and
 deleted locally once the upload is verified (same files and bytes in the bucket). If an upload fails,
 the local copy is kept and the runs go on. Pointer files and DONE markers stay on the machine, so
 finished tasks are still skipped.
@@ -51,7 +51,8 @@ Layout in the bucket: `agent-runs/<run id>/` (the run folders) and `output/<mode
 Options (environment variables before the command):
 - `MODELS="gpt-6-1-terra glm-5-3-flash"` runs only those sets, in that order (default: all of them;
   make more with `scripts/make_model_configs.py`).
-- `PRUNE_CHECKPOINTS=0` keeps each run's `checkpoints/` (~7 GB); the machine scripts delete it by default.
+- `PRUNE_CHECKPOINTS=0` keeps each run's `checkpoints/` (~7 GB) and uploads it; by default the machine scripts
+  and `upload_runs.sh` delete it when the run ends (retries start a new run, nothing reads them later).
 - `MIN_FREE_GB=60` (default): a session stops before a task when the runs disk has less free space;
   free space (or grow the disk) and run the machine script again.
 - A model whose key / model check fails is skipped and the next model runs; the pre-flight needs

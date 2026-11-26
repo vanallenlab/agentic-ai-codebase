@@ -30,7 +30,7 @@
 # Memory: the worker container is capped at 24 GB (leakage_guard.yaml). BRCA (~41 GB of data),
 # COADREAD (~33 GB) and PAAD (~28 GB) need a bigger machine: M3A_WORKER_MEMORY=<~1.6x data>g.
 # Disk: ~20 GB per finished run in RUNS (checkpoints/ ~7 GB of it). PRUNE_CHECKPOINTS=1 deletes
-# a run's checkpoints/ folder after it finishes successfully.
+# a run's checkpoints/ folder when its task ends (before any upload).
 # UPLOAD_TO=gs://<bucket>/<prefix> (env or `export UPLOAD_TO=...` in ~/.bashrc) uploads each run
 # folder when its task ends (done, failed or stopped) with scripts/htan/upload_run.sh and deletes
 # the local copy once the upload is verified, so the disk never fills up.
@@ -77,12 +77,18 @@ check_upload() {
         echo "cannot write to $UPLOAD_TO (does the bucket exist? does this VM's service account have write access?)"; return 1
     fi
 }
-# Upload the run that just ended (the task's newest pointer file) and free its local disk.
-upload_last() {
-    [ -n "$UPLOAD_TO" ] || return 0
-    local p; p=$(ls -t "$(out_dir "$1" "$2")"/run_*.json 2>/dev/null | head -1 || true)
+# The run that just ended is the task's newest pointer file. With PRUNE_CHECKPOINTS=1 its
+# checkpoints/ go first (whether it finished, failed or was stopped: a retry starts a new run and
+# never reads them), then with UPLOAD_TO it is uploaded and the local copy deleted.
+finish_last() {
+    local p rd; p=$(ls -t "$(out_dir "$1" "$2")"/run_*.json 2>/dev/null | head -1 || true)
     [ -n "$p" ] || return 0
-    bash scripts/htan/upload_run.sh "$p" "$UPLOAD_TO" || echo "!! upload failed for $1 / $2; local copy kept"
+    if [ "${PRUNE_CHECKPOINTS:-0}" = 1 ]; then
+        rd=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['run_dir'])" "$p" 2>/dev/null || true)
+        [ -n "$rd" ] && [ -d "$rd/checkpoints" ] && rm -rf "$rd/checkpoints" && echo "pruned $rd/checkpoints"
+    fi
+    [ -n "$UPLOAD_TO" ] || return 0
+    PRUNE_CHECKPOINTS=0 bash scripts/htan/upload_run.sh "$p" "$UPLOAD_TO" || echo "!! upload failed for $1 / $2; local copy kept"
 }
 
 # Check the model sets up front: a typo in MODELS should fail now, not hours later.
@@ -139,22 +145,18 @@ if [ "${_IN_SESSION:-0}" = 1 ]; then
             mins=$(( ($(date +%s) - start) / 60 ))
             if [ "$STOP" = 1 ]; then
                 printf "%s\t%s\tstopped\t%s\n" "$m" "$t" "$mins" >> "$SUMMARY"; echo "stopped by Ctrl-c"
-                upload_last "$m" "$t"; break
+                finish_last "$m" "$t"; break
             fi
             if [ "$rc" = 0 ]; then
                 od=$(out_dir "$m" "$t"); mkdir -p "$od"
                 ptr=$(ls -t "$od"/run_*.json 2>/dev/null | head -1 || true)
                 echo "${ptr:-}" > "$od/DONE"
-                if [ "${PRUNE_CHECKPOINTS:-0}" = 1 ] && [ -n "$ptr" ]; then
-                    rd=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['run_dir'])" "$ptr")
-                    [ -d "$rd/checkpoints" ] && rm -rf "$rd/checkpoints" && echo "pruned $rd/checkpoints"
-                fi
                 printf "%s\t%s\tdone\t%s\n" "$m" "$t" "$mins" >> "$SUMMARY"
-                upload_last "$m" "$t"
+                finish_last "$m" "$t"
             else
                 printf "%s\t%s\tFAILED(rc=%s)\t%s\n" "$m" "$t" "$rc" "$mins" >> "$SUMMARY"
                 echo "!! $m / $t failed (exit $rc), continuing with the next task"
-                upload_last "$m" "$t"
+                finish_last "$m" "$t"
             fi
         done
         [ "$STOP" = 1 ] && break
