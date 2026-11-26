@@ -147,7 +147,7 @@ Every run writes, as it goes: `agent.log`, `steps.jsonl` (every tool execution i
 - `run_agent_htan.py` — entry point for HTAN batch experiments (adds cNMF data loading)
 - `src/` — agent loop, LLM client, tool registry, hooks, observability (W&B, Weave)
 - `config/` — YAML configs (`hai/` for HAI datasets, `htan/<model>/` for HTAN cancer types: `opus-5-5`, `gpt-6-2-sol`,
-  `gpt-6-1-terra`, `qwen3-8-27b`, `muse-spark-open`; `htan/opus-4-6/` is the older Opus 4.6 set and the source of the others)
+  `gpt-6-1-terra`, `qwen3-8-27b`, `muse-spark-open`, `muse-glimmer-30b`, `kimi-k3-1-pro`, `glm-5-3-flash`; `htan/opus-4-6/` is the older Opus 4.6 set and the source of the others)
 - `tasks/` — task prompt files (`.md` / `.txt`) referenced by configs
 - `data/` — input datasets (see `data/README.md` for expected structure)
 - `output/` — agent run results (see `output/README.md` for structure)
