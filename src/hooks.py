@@ -169,7 +169,9 @@ def pre_tool_call_hook(
     Returns:
         Structured reasoning dict, or None on failure
     """
-    if client.provider == "anthropic":
+    # Anthropic, OpenRouter and OpenAI in local mode (store: false) have no server-side
+    # conversation to fork from: build a standalone context instead.
+    if not getattr(client, "keeps_server_state", client.provider != "anthropic"):
         return _pre_tool_call_hook_anthropic(
             client=client,
             tool_name=tool_name,
@@ -376,12 +378,18 @@ def _pre_tool_call_hook_anthropic(
         }
 
     try:
-        # For Anthropic, we use isolated=True with a clean user message (no tool results)
-        # This creates a fresh conversation that won't conflict with the main context
+        # isolated=True: a clean one-message conversation that never touches the main one.
+        # Tool definition and tool_choice in the format of the client's provider.
+        if client.provider == "anthropic":
+            tools_arg = [tool]
+            choice = {"type": "tool", "name": tool_name_to_call}
+        else:
+            tools_arg = [REASONING_TOOL if tool_name_to_call == "submit_reasoning" else RETRY_REASONING_TOOL]
+            choice = {"type": "function", "name": tool_name_to_call}
         response = client.create(
             messages=[{"type": "message", "role": "user", "content": prompt}],
-            tools=[tool],
-            tool_choice={"type": "tool", "name": tool_name_to_call},  # Anthropic format
+            tools=tools_arg,
+            tool_choice=choice,
             reasoning_effort="low",  # Keep hook fast
             isolated=True,
         )

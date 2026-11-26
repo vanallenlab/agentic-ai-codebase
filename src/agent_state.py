@@ -94,7 +94,9 @@ class TokenTracker:
         self.cumulative_cache_write_tokens += cache_write_tokens
         self.cumulative_uncached_input += uncached_tokens
         from src.config import estimate_cost_usd
-        cost = estimate_cost_usd(self.model, uncached_tokens, cache_write_tokens, cached_tokens, output_tokens)
+        billed = getattr(usage, "cost_usd", None)   # OpenRouter reports the billed amount
+        cost = float(billed) if billed is not None else estimate_cost_usd(
+            self.model, uncached_tokens, cache_write_tokens, cached_tokens, output_tokens)
         self.cumulative_cost_usd += cost
         self.total_images_sent += images_sent
         

@@ -27,7 +27,8 @@ fi
 [ -d "$DATA_MNT/htan_datasets" ] || { echo "no htan_datasets/ on $DEV"; exit 1; }
 grep -qs " $DATA_MNT " /etc/fstab || echo "$DEV $DATA_MNT ext4 ro,noload,nofail 0 0" | sudo tee -a /etc/fstab >/dev/null
 
-git switch -q harness-hardening && git pull -q --ff-only
+git pull -q --ff-only   # the branch you cloned/switched to (BRANCH=<name> to switch first)
+[ -z "${BRANCH:-}" ] || { git switch -q "$BRANCH" && git pull -q --ff-only; }
 mkdir -p data output
 [ -e data/datasets-mt ] || ln -s "$DATA_MNT" data/datasets-mt
 [ -e output/runs ] || ln -s "$RUNS" output/runs

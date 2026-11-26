@@ -25,6 +25,11 @@ The big cohorts get fewer tasks because each of their steps is slower.
    (installs docker/tmux/uv if missing, mounts the data disk ro at `~/htan-disk-mt`, pulls the image).
 5. `DRY_RUN=1 bash scripts/htan/machine_<N>.sh`, then `bash scripts/htan/machine_<N>.sh`.
 6. Watch: `tmux ls`, `tmux attach -t htan_<cohort>`; finished tasks: `ls output/opus-5-5/*/*/DONE`.
+
+Other models: `MODEL_DIR=<set> bash scripts/htan/machine_<N>.sh` with a set from `config/htan/`
+(`gpt-6-2-sol`, `gpt-6-1-terra`, `qwen3-8-27b`, `muse-spark-open`, or one made with
+`scripts/make_model_configs.py`). The pre-flight checks the matching key (`OPENAI_API_KEY`,
+`OPENROUTER_API_KEY`) in `~/.bashrc`. Results go to `output/<set>/`.
    Re-running the machine script skips finished tasks and retries failed ones.
 
 Results stay on each machine (`output/opus-5-5/<cohort>/` pointer files and the run folders in `~/agent-runs`);

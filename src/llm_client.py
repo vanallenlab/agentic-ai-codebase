@@ -1,26 +1,57 @@
 """
-Unified LLM client abstraction for OpenAI, Azure OpenAI, and Anthropic Claude.
+Unified LLM client abstraction for OpenAI, Azure OpenAI, Anthropic Claude and OpenRouter.
 
 This module provides a single interface for calling different LLM providers,
 handling message format conversion, API differences, and response parsing.
+
+Providers (config `llm.provider`):
+    anthropic     Claude models, Messages API. Conversation history kept locally; explicit
+                  prompt caching (+ keep-alive pings, src/cache_keepalive.py).
+    openai        GPT models, Responses API. `llm.store: true` (default) keeps the conversation
+                  on OpenAI's side (previous_response_id); `false` keeps it locally and stores
+                  nothing at OpenAI (reasoning passed back encrypted). Caching is automatic.
+    azure_openai  Same Responses API on Azure.
+    openrouter    Open-weight models (Qwen, Muse, ...) through OpenRouter's chat-completions
+                  API. History kept locally; caching depends on the serving host; the cost of
+                  each request comes back in the response.
+
+The agent loop talks to all of them in one internal format (Responses-style input items
+in, unified output items out): see `create()`.
 """
 
 import copy
 import json
 import os
 import time
+import uuid
 from typing import Any, Optional
 from dataclasses import dataclass
+
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+# OpenRouter routing defaults: only hosts that support every parameter we send (tools,
+# reasoning), and only hosts that neither store nor train on prompts.
+OPENROUTER_DEFAULT_ROUTING = {"require_parameters": True, "data_collection": "deny"}
+
+
+class LLMProviderError(Exception):
+    """A provider failure that is not worth retrying (e.g. no host can serve the request).
+    The agent loop stops cleanly on it, like on an API error."""
+
+
+class TransientProviderError(Exception):
+    """A provider failure that is worth retrying (e.g. OpenRouter's host failed mid-request)."""
 
 
 class UsageInfo:
     """Unified usage object that exposes attributes like the Azure OpenAI usage object."""
     def __init__(self, input_tokens: int = 0, output_tokens: int = 0,
-                 input_tokens_details=None, output_tokens_details=None):
+                 input_tokens_details=None, output_tokens_details=None, cost_usd=None):
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
         self.input_tokens_details = input_tokens_details
         self.output_tokens_details = output_tokens_details
+        # Billed cost reported by the provider (OpenRouter); None = estimate from MODEL_PRICES
+        self.cost_usd = cost_usd
     
     def __repr__(self):
         return f"UsageInfo(input={self.input_tokens}, output={self.output_tokens})"
@@ -56,6 +87,19 @@ _THINKING_DEFAULT_ON_MARKERS = ("opus-5", "sonnet-5", "haiku-5", "fable", "mytho
 _THINKING_NOT_DISABLEABLE_MARKERS = ("opus-5-5", "sonnet-5-5", "fable", "mythos")
 
 
+def _details(**fields):
+    """Small attribute object for usage details (read with getattr by TokenTracker)."""
+    return type("Details", (), dict(fields))()
+
+
+def _attr(obj, name, default=0):
+    """getattr that also works on dicts and treats None as missing."""
+    if obj is None:
+        return default
+    v = obj.get(name) if isinstance(obj, dict) else getattr(obj, name, None)
+    return default if v is None else v
+
+
 def _thinking_default_on(model: str) -> bool:
     m = (model or "").lower()
     return any(x in m for x in _THINKING_DEFAULT_ON_MARKERS)
@@ -67,7 +111,7 @@ def _supports_adaptive_thinking(model: str) -> bool:
 
 
 class LLMClient:
-    """Unified interface for LLM providers (OpenAI, Azure OpenAI, Anthropic)."""
+    """Unified interface for LLM providers (OpenAI, Azure OpenAI, Anthropic, OpenRouter)."""
 
     # Overridable from config (see create_llm_client_from_config)
     max_images_per_request: int = 600
@@ -85,6 +129,15 @@ class LLMClient:
         self.thinking_display = kwargs.pop("thinking_display", None)  # "summarized" | "omitted" | None
         self.effort_override = kwargs.pop("effort", None)       # output_config.effort, or None
         self.max_retries = int(kwargs.pop("max_retries", 8))
+        # OpenAI: keep the conversation on OpenAI's side (previous_response_id) or locally
+        self.openai_store = bool(kwargs.pop("store", True))
+        # OpenAI: reasoning summary in the output ("auto" | "concise" | "detailed" | None)
+        self.reasoning_summary = kwargs.pop("reasoning_summary", "auto")
+        # Model limits known to the client (OpenRouter fills these from its model catalogue)
+        self.context_window: Optional[int] = None
+        self.max_output_tokens: Optional[int] = None
+        self.accepts_images: Optional[bool] = None
+        self.served_by: Optional[str] = None   # OpenRouter: host that served the last request
 
         if self.provider == "openai":
             self._init_openai(**kwargs)
@@ -92,8 +145,15 @@ class LLMClient:
             self._init_azure_openai(**kwargs)
         elif self.provider == "anthropic":
             self._init_anthropic(**kwargs)
+        elif self.provider == "openrouter":
+            self._init_openrouter(**kwargs)
         else:
             raise ValueError(f"Unsupported provider: {provider}")
+
+    @property
+    def keeps_server_state(self) -> bool:
+        """True when the conversation lives on the provider (OpenAI previous_response_id)."""
+        return self.provider in ("openai", "azure_openai") and self.openai_store
     
     def _init_openai(self, **kwargs):
         """Direct OpenAI API (platform.openai.com), not Azure."""
@@ -103,6 +163,7 @@ class LLMClient:
             max_retries=self.max_retries,
         )
         self._conversation_id = None
+        self._resp_history: list = []   # local mode (store: false): every input/output item
     
     def _init_azure_openai(self, **kwargs):
         from openai import AzureOpenAI
@@ -113,6 +174,7 @@ class LLMClient:
             max_retries=self.max_retries,
         )
         self._conversation_id = None
+        self._resp_history: list = []
     
     def _init_anthropic(self, **kwargs):
         import anthropic
@@ -130,6 +192,39 @@ class LLMClient:
         # the cache entry's 5-minute lifetime is counted from the start of a request.
         self._last_cached_request: Optional[dict] = None
         self._last_cache_touch: Optional[float] = None
+
+    def _init_openrouter(self, **kwargs):
+        """OpenRouter (open-weight models) through its OpenAI-compatible chat-completions API.
+
+        kwargs: api_key (else OPENROUTER_API_KEY), routing (OpenRouter `provider` object,
+        merged over OPENROUTER_DEFAULT_ROUTING), request_timeout_s.
+        The model's limits and capabilities come from OpenRouter's model catalogue; a model
+        without tool calling is rejected here, before any data is loaded.
+        """
+        from openai import OpenAI
+        api_key = kwargs.get("api_key") or os.environ.get("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("provider openrouter needs OPENROUTER_API_KEY")
+        self.client = OpenAI(
+            base_url=OPENROUTER_BASE_URL, api_key=api_key, max_retries=self.max_retries,
+            timeout=float(kwargs.get("request_timeout_s") or 1800),
+        )
+        self.openrouter_routing = {**OPENROUTER_DEFAULT_ROUTING, **(kwargs.get("routing") or {})}
+        self._chat_history: list[dict] = []     # chat-completions messages (no system)
+        self._system_prompt: Optional[str] = None
+        self._supports_reasoning = True
+        meta = _openrouter_model_info(self.model, api_key)
+        if meta is None:
+            print(f"⚠️ Could not read OpenRouter's catalogue entry for {self.model}; "
+                  "assuming tools, reasoning and images are supported")
+            return
+        params = set(meta.get("supported_parameters") or [])
+        if "tools" not in params:
+            raise ValueError(f"OpenRouter model {self.model} does not support tool calling")
+        self._supports_reasoning = "reasoning" in params
+        self.context_window = meta.get("context_length")
+        self.max_output_tokens = (meta.get("top_provider") or {}).get("max_completion_tokens")
+        self.accepts_images = "image" in ((meta.get("architecture") or {}).get("input_modalities") or [])
     
     # -------------------------------------------------------------------------
     # Public API
@@ -149,8 +244,18 @@ class LLMClient:
             return self._create_openai_responses(
                 messages, tools, reasoning_effort, store=store and not isolated,
                 parallel_tool_calls=parallel_tool_calls, tool_choice=tool_choice,
-                previous_response_id=previous_response_id
+                previous_response_id=previous_response_id, isolated=isolated,
             )
+        elif self.provider == "openrouter":
+            if isolated:
+                saved_history, saved_system = self._chat_history, self._system_prompt
+                try:
+                    self._chat_history = []
+                    return self._create_openrouter(messages, tools, reasoning_effort, tool_choice,
+                                                   isolated=True)
+                finally:
+                    self._chat_history, self._system_prompt = saved_history, saved_system
+            return self._create_openrouter(messages, tools, reasoning_effort, tool_choice)
         elif self.provider == "anthropic":
             if isolated:
                 # Swap in a fresh list; the isolated call only ever appends to the
@@ -216,6 +321,7 @@ class LLMClient:
                           openai.APIConnectionError, openai.APITimeoutError]
         except ImportError:
             pass
+        transient.append(TransientProviderError)
         transient = tuple(transient)
 
         deadline = _time.monotonic() + float(self.retry_total_seconds or 0)
@@ -243,29 +349,56 @@ class LLMClient:
     def reset_conversation_history(self):
         if self.provider == "anthropic":
             self._conversation_history = []
+        elif self.provider == "openrouter":
+            self._chat_history = []
+        else:
+            self._resp_history = []
     
     # -------------------------------------------------------------------------
     # OpenAI Responses API (direct OpenAI and Azure OpenAI share the same API)
     # -------------------------------------------------------------------------
     def _create_openai_responses(self, messages, tools, reasoning_effort, store,
-                                  parallel_tool_calls, tool_choice, previous_response_id):
-        """Call OpenAI Responses API (same for direct OpenAI and Azure OpenAI)."""
+                                  parallel_tool_calls, tool_choice, previous_response_id,
+                                  isolated: bool = False):
+        """Call OpenAI Responses API (same for direct OpenAI and Azure OpenAI).
+
+        Server mode (llm.store true, default): each request sends only the new input items
+        and continues from previous_response_id; OpenAI keeps the conversation.
+        Local mode (llm.store false): the full item list is kept here and re-sent each turn
+        with store=False; reasoning items come back encrypted and are passed back as they are.
+        Side-channel calls (isolated, e.g. the telemetry hook) never touch the history.
+        """
         messages = _strip_local_keys(messages)
         extra = {}
         if self.max_tokens_override:
             extra["max_output_tokens"] = int(self.max_tokens_override)
+        reasoning = {"effort": reasoning_effort}
+        if self.reasoning_summary and not isolated:
+            reasoning["summary"] = self.reasoning_summary
+        local = not self.openai_store
+        if local and not isolated:
+            self._resp_history.extend(messages)
+            api_input, store, prev = self._resp_history, False, None
+            extra["include"] = ["reasoning.encrypted_content"]
+        else:
+            api_input, prev = messages, previous_response_id
+            if local:              # isolated call in local mode: nothing stored, no chaining
+                store, prev = False, None
         response = self._with_retries(lambda: self.client.responses.create(
             model=self.model,
-            input=messages,
+            input=api_input,
             tools=tools or [],
-            reasoning={"effort": reasoning_effort},
+            reasoning=reasoning,
             store=store,
             parallel_tool_calls=parallel_tool_calls,
             **({"tool_choice": tool_choice} if tool_choice else {}),
-            **({"previous_response_id": previous_response_id} if previous_response_id else {}),
+            **({"previous_response_id": prev} if prev else {}),
             **extra,
         ))
         self._conversation_id = response.id
+        if local and not isolated:
+            self._resp_history.extend(o.model_dump(mode="json", exclude_none=True)
+                                      for o in (response.output or []))
 
         stop_reason = None
         status = getattr(response, "status", None)
@@ -278,10 +411,142 @@ class LLMClient:
             stop_reason = "tool_use" if has_call else "end_turn"
         return LLMResponse(
             id=response.id, provider=self.provider,
-            output=response.output, usage=response.usage, raw_response=response,
+            output=response.output, usage=_openai_usage(response.usage), raw_response=response,
             stop_reason=stop_reason,
         )
-    
+
+    # -------------------------------------------------------------------------
+    # OpenRouter (chat completions)
+    # -------------------------------------------------------------------------
+    def _create_openrouter(self, messages, tools, reasoning_effort, tool_choice,
+                           isolated: bool = False):
+        """Call OpenRouter's chat-completions API with the full local history.
+
+        Incoming items (Responses-style, as for every provider) become chat messages:
+        system -> stored separately and sent first; user text/images -> user message;
+        function_call_output -> role "tool" message. Tool results always come right after
+        the assistant message that called them, before any plot message.
+        """
+        if isolated:
+            messages = [m for m in messages if m.get("type") != "function_call_output"]
+        tool_msgs, other_msgs = [], []
+        for m in messages:
+            mtype = m.get("type")
+            if mtype == "function_call_output":
+                out = m.get("output", "")
+                tool_msgs.append({"role": "tool", "tool_call_id": m.get("call_id"),
+                                  "content": out if isinstance(out, str) else json.dumps(out)})
+            elif mtype == "message":
+                role, content = m.get("role"), m.get("content")
+                if role == "system":
+                    self._system_prompt = content if isinstance(content, str) else "\n".join(
+                        c.get("text", "") for c in (content or [])
+                        if isinstance(c, dict) and c.get("type") in ("text", "input_text"))
+                    continue
+                if role not in ("user", "assistant"):
+                    continue
+                chat_content = _to_chat_content(content)
+                if chat_content:
+                    other_msgs.append({"role": role, "content": chat_content})
+        self._chat_history.extend(tool_msgs + other_msgs)
+
+        n_images = sum(1 for m in self._chat_history if isinstance(m.get("content"), list)
+                       for c in m["content"] if isinstance(c, dict) and c.get("type") == "image_url")
+        if n_images > self.max_images_per_request:
+            raise RequestTooLargeError(
+                f"Conversation holds {n_images} images; at most {self.max_images_per_request} "
+                f"per request are allowed. The run is stopping here (everything is saved).")
+
+        max_tokens_map = {"low": 8192, "medium": 16384, "high": 32000}
+        max_tokens = int(self.max_tokens_override or max_tokens_map.get(reasoning_effort, 16384))
+        if self.max_output_tokens:
+            max_tokens = min(max_tokens, int(self.max_output_tokens))
+        api_messages = ([{"role": "system", "content": self._system_prompt}] if self._system_prompt else []) \
+            + self._chat_history
+        kwargs = {"model": self.model, "messages": api_messages, "max_tokens": max_tokens}
+        if tools:
+            kwargs["tools"] = [_to_chat_tool(t) for t in tools]
+            kwargs["tool_choice"] = _to_chat_tool_choice(tool_choice) if tool_choice else "auto"
+        extra_body = {"provider": dict(self.openrouter_routing), "usage": {"include": True}}
+        if self._supports_reasoning:
+            extra_body["reasoning"] = {"effort": reasoning_effort}
+        kwargs["extra_body"] = extra_body
+
+        import openai
+        def _call(kw):
+            r = self.client.chat.completions.create(**kw)
+            err = getattr(r, "error", None)
+            if not getattr(r, "choices", None):
+                raise TransientProviderError(f"OpenRouter returned no choices: {err or r}")
+            ch = r.choices[0]
+            if ch.finish_reason == "error" or getattr(ch, "error", None):
+                raise TransientProviderError(f"OpenRouter host error: {getattr(ch, 'error', None) or err}")
+            return r
+        try:
+            response = self._with_retries(lambda: _call(kwargs))
+        except (openai.BadRequestError, openai.NotFoundError) as e:
+            forced = isinstance(kwargs.get("tool_choice"), dict)
+            if forced:
+                # Not every host accepts a forced tool; fall back to auto + the prompt's instruction.
+                kwargs["tool_choice"] = "auto"
+                response = self._with_retries(lambda: _call(kwargs))
+            elif isinstance(e, openai.NotFoundError):
+                raise LLMProviderError(f"OpenRouter cannot serve {self.model} with these settings "
+                                       f"(routing {self.openrouter_routing}): {e}") from e
+            else:
+                raise
+
+        host = getattr(response, "provider", None)
+        if host and host != self.served_by and not isolated:
+            if self.served_by:
+                print(f"⚠️ OpenRouter switched host {self.served_by} -> {host} (prompt cache starts cold)")
+            self.served_by = host
+        msg = response.choices[0].message
+        dumped = msg.model_dump(mode="json")
+        tool_calls = []
+        for tc in (msg.tool_calls or []):
+            args = tc.function.arguments
+            tool_calls.append({
+                "id": tc.id or f"call_{uuid.uuid4().hex[:24]}",
+                "type": "function",
+                "function": {"name": tc.function.name,
+                             "arguments": args if isinstance(args, str) else json.dumps(args or {})},
+            })
+        # Assistant turn goes back verbatim (reasoning_details too: some models need their
+        # reasoning passed back across tool calls).
+        # An assistant turn with neither text nor a tool call would make the next request invalid.
+        assistant = {"role": "assistant", "content": msg.content or (None if tool_calls else "(no content)")}
+        if tool_calls:
+            assistant["tool_calls"] = tool_calls
+        if dumped.get("reasoning_details"):
+            assistant["reasoning_details"] = dumped["reasoning_details"]
+        self._chat_history.append(assistant)   # (an isolated call's history is discarded)
+
+        output = []
+        reasoning_text = dumped.get("reasoning") or "\n".join(
+            d.get("text") or d.get("summary") or "" for d in (dumped.get("reasoning_details") or [])
+            if isinstance(d, dict)).strip()
+        if reasoning_text:
+            output.append({"type": "reasoning", "summary": reasoning_text})
+        if msg.content:
+            output.append({"type": "message", "role": "assistant",
+                           "content": [{"type": "text", "text": msg.content}]})
+        for tc in tool_calls:
+            output.append({"type": "function_call", "name": tc["function"]["name"],
+                           "call_id": tc["id"], "arguments": tc["function"]["arguments"]})
+
+        finish = response.choices[0].finish_reason
+        stop_reason = ("tool_use" if tool_calls else
+                       {"stop": "end_turn", "length": "max_tokens", "content_filter": "refusal",
+                        "tool_calls": "tool_use"}.get(finish, str(finish) if finish else None))
+        if tool_calls and finish == "length":
+            stop_reason = "max_tokens"
+        return LLMResponse(
+            id=getattr(response, "id", None) or f"or-{uuid.uuid4().hex[:12]}", provider="openrouter",
+            output=output, usage=_openrouter_usage(response.usage), raw_response=response,
+            stop_reason=stop_reason,
+        )
+
     # -------------------------------------------------------------------------
     # Anthropic
     # -------------------------------------------------------------------------
@@ -408,10 +673,15 @@ class LLMClient:
         try:
             response = self._with_retries(lambda: _call(kwargs))
         except anthropic.BadRequestError as e:
-            # Forced tool_choice is rejected by newer models (and with thinking on).
-            # Fall back to auto + the instruction already in the prompt.
+            # Forced tool_choice is rejected by newer models (Opus 5.5, and with thinking on).
             tc = kwargs.get("tool_choice") or {}
             if tc.get("type") in ("any", "tool") and "tool_choice" in str(e):
+                forced = next((t for t in kwargs.get("tools") or [] if t.get("name") == tc.get("name")), None)
+                if _isolated_mode and forced is not None:
+                    # Side call that must return that tool's arguments (telemetry hook): ask for
+                    # them as structured output instead; with plain auto the model often
+                    # answers in text and the call returns nothing.
+                    return self._anthropic_forced_tool_as_json(kwargs, forced)
                 kwargs["tool_choice"] = {"type": "auto", "disable_parallel_tool_use": True}
                 response = self._with_retries(lambda: _call(kwargs))
             else:
@@ -456,6 +726,39 @@ class LLMClient:
             output=unified_output, usage=usage, raw_response=response,
             stop_reason=getattr(response, "stop_reason", None),
         )
+
+    def _anthropic_forced_tool_as_json(self, kwargs: dict, tool: dict) -> "LLMResponse":
+        """Isolated Anthropic call whose forced tool_choice the model rejects: request the
+        tool's input schema as structured output (output_config.format) and return it as
+        that tool's call, so callers see the same result as with a forced tool."""
+        schema = copy.deepcopy(tool.get("input_schema") or {"type": "object", "properties": {}})
+        schema.setdefault("additionalProperties", False)
+        kw = {k: v for k, v in kwargs.items() if k not in ("tools", "tool_choice")}
+        kw["output_config"] = {**(kw.get("output_config") or {}),
+                               "format": {"type": "json_schema", "schema": schema}}
+        response = self._with_retries(lambda: self.client.messages.create(**kw))
+        text = "".join(getattr(b, "text", "") for b in response.content
+                       if self._get_block_type(b) == "text")
+        try:
+            args = json.loads(text)
+        except json.JSONDecodeError:
+            args = None
+        output = []
+        if isinstance(args, dict):
+            output.append({"type": "function_call", "name": tool.get("name"),
+                           "call_id": f"json_{response.id}", "arguments": json.dumps(args)})
+        elif text:
+            output.append({"type": "message", "role": "assistant",
+                           "content": [{"type": "text", "text": text}]})
+        u = response.usage
+        cache_read = getattr(u, "cache_read_input_tokens", 0) or 0
+        cache_write = getattr(u, "cache_creation_input_tokens", 0) or 0
+        usage = UsageInfo(input_tokens=(u.input_tokens or 0) + cache_read + cache_write,
+                          output_tokens=u.output_tokens,
+                          input_tokens_details=_details(cached_tokens=cache_read, cache_write_tokens=cache_write,
+                                                        uncached_tokens=u.input_tokens or 0))
+        return LLMResponse(id=response.id, provider="anthropic", output=output, usage=usage,
+                           raw_response=response, stop_reason=getattr(response, "stop_reason", None))
 
     def _thinking_config(self, reasoning_effort: str, isolated: bool) -> Optional[dict]:
         """Thinking parameter for this request (None = omit).
@@ -718,6 +1021,115 @@ class LLMClient:
         return tool_choice
 
 
+# -----------------------------------------------------------------------------
+# Format helpers (OpenAI / OpenRouter)
+# -----------------------------------------------------------------------------
+def _openai_usage(u) -> "UsageInfo":
+    """Normalize OpenAI Responses usage. input_tokens includes cached and cache-written
+    tokens; split them so the cost estimate bills each at its own price."""
+    if u is None:
+        return UsageInfo()
+    total_in = _attr(u, "input_tokens")
+    det = _attr(u, "input_tokens_details", None)
+    cached = _attr(det, "cached_tokens")
+    write = _attr(det, "cache_write_tokens")
+    out_det = _attr(u, "output_tokens_details", None)
+    return UsageInfo(
+        input_tokens=total_in, output_tokens=_attr(u, "output_tokens"),
+        input_tokens_details=_details(cached_tokens=cached, cache_write_tokens=write,
+                                      uncached_tokens=max(0, total_in - cached - write)),
+        output_tokens_details=_details(reasoning_tokens=_attr(out_det, "reasoning_tokens")),
+    )
+
+
+def _openrouter_usage(u) -> "UsageInfo":
+    """Normalize OpenRouter chat usage (prompt_tokens includes cached / cache-written
+    tokens); `cost` is the billed USD amount of the request."""
+    if u is None:
+        return UsageInfo()
+    total_in = _attr(u, "prompt_tokens")
+    det = _attr(u, "prompt_tokens_details", None)
+    cached = _attr(det, "cached_tokens")
+    write = _attr(det, "cache_write_tokens")
+    out_det = _attr(u, "completion_tokens_details", None)
+    cost = _attr(u, "cost", None)
+    return UsageInfo(
+        input_tokens=total_in, output_tokens=_attr(u, "completion_tokens"),
+        input_tokens_details=_details(cached_tokens=cached, cache_write_tokens=write,
+                                      uncached_tokens=max(0, total_in - cached - write)),
+        output_tokens_details=_details(reasoning_tokens=_attr(out_det, "reasoning_tokens")),
+        cost_usd=float(cost) if cost is not None else None,
+    )
+
+
+def _to_chat_content(content):
+    """Responses-style message content -> chat-completions content (str or parts)."""
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return None
+    parts = []
+    for c in content:
+        if not isinstance(c, dict):
+            continue
+        t = c.get("type")
+        if t in ("text", "input_text", "output_text") and c.get("text"):
+            parts.append({"type": "text", "text": c["text"]})
+        elif t == "input_image":
+            url = c.get("image_url")
+            if isinstance(url, dict):
+                url = url.get("url")
+            if not url and isinstance(c.get("source"), dict):
+                src = c["source"]
+                url = f"data:{src.get('media_type', 'image/png')};base64,{src.get('data', '')}"
+            if url:
+                parts.append({"type": "image_url", "image_url": {"url": url}})
+    return parts or None
+
+
+def _to_chat_tool(tool: dict) -> dict:
+    """Responses-style ({type, name, parameters}) or Anthropic-style ({name, input_schema})
+    tool definition -> chat-completions tool."""
+    if tool.get("type") == "function" and isinstance(tool.get("function"), dict):
+        return tool
+    return {"type": "function", "function": {
+        "name": tool.get("name"),
+        "description": tool.get("description", ""),
+        "parameters": tool.get("parameters") or tool.get("input_schema") or {"type": "object", "properties": {}},
+    }}
+
+
+def _to_chat_tool_choice(tool_choice):
+    if isinstance(tool_choice, str):
+        return tool_choice
+    if isinstance(tool_choice, dict):
+        name = tool_choice.get("name") or (tool_choice.get("function") or {}).get("name")
+        if tool_choice.get("type") in ("function", "tool") and name:
+            return {"type": "function", "function": {"name": name}}
+        if tool_choice.get("type") in ("auto", "none", "required"):
+            return tool_choice["type"]
+        if tool_choice.get("type") == "any":
+            return "required"
+    return "auto"
+
+
+def _openrouter_model_info(model: str, api_key: str) -> Optional[dict]:
+    """The model's entry in OpenRouter's catalogue (limits, modalities, parameters)."""
+    import urllib.request
+    try:
+        req = urllib.request.Request(f"{OPENROUTER_BASE_URL}/models",
+                                     headers={"Authorization": f"Bearer {api_key}"})
+        with urllib.request.urlopen(req, timeout=60) as f:
+            data = json.load(f).get("data") or []
+    except Exception as e:
+        print(f"⚠️ OpenRouter model catalogue unavailable: {type(e).__name__}: {e}")
+        return None
+    for m in data:
+        if m.get("id") == model:
+            return m
+    raise ValueError(f"OpenRouter has no model {model!r} (check the id on openrouter.ai/models)")
+
+
 def _strip_local_keys(messages: list) -> list:
     """Remove harness-only keys (e.g. an image's local 'path') before sending
     messages to an API that validates unknown fields."""
@@ -736,10 +1148,18 @@ def create_llm_client_from_config(config: dict) -> tuple[LLMClient, str]:
     """Create LLM client from configuration.
     
     Config under `llm`:
-        provider: "openai" | "azure_openai" | "anthropic"
+        provider: "anthropic" | "openai" | "azure_openai" | "openrouter"
         model: model name or deployment name (required for provider selection)
-        api_key: optional; otherwise uses OPENAI_API_KEY, AZURE_OPENAI_API_KEY, or ANTHROPIC_API_KEY
-        For Azure: api_version, azure_endpoint (or env AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT)
+        api_key: optional; otherwise ANTHROPIC_API_KEY, OPENAI_API_KEY, AZURE_OPENAI_API_KEY
+                 or OPENROUTER_API_KEY
+        max_tokens: output cap per response
+        Anthropic: thinking, effort, thinking_display, prompt_caching, cache_keepalive_minutes
+        OpenAI:    store (default true: OpenAI keeps the conversation; false: kept locally,
+                   nothing stored at OpenAI), reasoning_summary (default "auto")
+        Azure:     api_version, azure_endpoint (or env AZURE_OPENAI_API_VERSION, AZURE_OPENAI_ENDPOINT)
+        OpenRouter: routing (OpenRouter `provider` object, e.g. {order: [...],
+                   allow_fallbacks: false, quantizations: [...]}; merged over
+                   require_parameters: true, data_collection: deny), request_timeout_s
     """
     llm_config = config.get("llm", {}) or {}
     provider = (llm_config.get("provider") or "azure_openai").strip().lower()
@@ -750,6 +1170,8 @@ def create_llm_client_from_config(config: dict) -> tuple[LLMClient, str]:
         "effort": llm_config.get("effort"),
         "thinking_display": llm_config.get("thinking_display"),
         "max_retries": llm_config.get("max_retries", 8),
+        "store": llm_config.get("store", True),
+        "reasoning_summary": llm_config.get("reasoning_summary", "auto"),
     }
 
     if provider == "openai":
@@ -766,8 +1188,15 @@ def create_llm_client_from_config(config: dict) -> tuple[LLMClient, str]:
     elif provider == "anthropic":
         model = llm_config.get("model", "claude-3-5-sonnet-20241022")
         client = LLMClient(provider="anthropic", model=model, **common)
+    elif provider == "openrouter":
+        model = llm_config.get("model")
+        if not model:
+            raise ValueError("llm.model is required for provider openrouter (e.g. qwen/qwen3.8-27b)")
+        client = LLMClient(provider="openrouter", model=model, routing=llm_config.get("routing"),
+                           request_timeout_s=llm_config.get("request_timeout_s"), **common)
     else:
-        raise ValueError(f"Unsupported LLM provider: {provider}. Use one of: openai, azure_openai, anthropic")
+        raise ValueError(f"Unsupported LLM provider: {provider}. "
+                         "Use one of: anthropic, openai, azure_openai, openrouter")
 
     if llm_config.get("retry_total_seconds") is not None:
         client.retry_total_seconds = float(llm_config["retry_total_seconds"])

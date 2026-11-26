@@ -6,7 +6,8 @@
 #   DRY_RUN=1 bash scripts/run_htan_cohort.sh cesc     # pre-flight checks of every task, no runs
 #   ONLY="celltype_annotation molecular_pik3ca" bash scripts/run_htan_cohort.sh cesc
 #   SKIP="pancancer_clinical_survival" bash scripts/run_htan_cohort.sh cesc
-#   MODEL_DIR=opus-5-5 (default; opus-4-6 for the older set) picks config/htan/<MODEL_DIR>/<COHORT>/*.yaml
+#   MODEL_DIR=opus-5-5 (default) picks config/htan/<MODEL_DIR>/<COHORT>/*.yaml; other sets: gpt-6-2-sol,
+#     gpt-6-1-terra, qwen3-8-27b, muse-spark-open (make more with scripts/make_model_configs.py)
 #
 # Each task goes through scripts/run_htan_task.sh (pre-flight checks, leakage guard, one
 # isolated worker container). Runs are sequential because each worker may use up to 24 GB.
@@ -16,9 +17,10 @@
 # Ctrl-c in the session stops the current task cleanly (results are saved) and does not
 # start the next one.
 #
-# Per machine you need: this repo on branch harness-hardening, uv, Docker (the image is pulled
+# Per machine you need: this repo, uv, Docker (the image is pulled
 # on first use; `docker login ghcr.io` first), the cohort's data under DATA_MNT/htan_datasets,
-# and ANTHROPIC_API_KEY (plus NCBI_API_KEY, WANDB_API_KEY if used) exported in ~/.bashrc.
+# and the model provider's key exported in ~/.bashrc: ANTHROPIC_API_KEY (Claude), OPENAI_API_KEY
+# (GPT) or OPENROUTER_API_KEY (open-weight models), plus NCBI_API_KEY / WANDB_API_KEY if used.
 # Memory: the worker container is capped at 24 GB (leakage_guard.yaml). BRCA (~41 GB of data),
 # COADREAD (~33 GB) and PAAD (~28 GB) need a bigger machine: M3A_WORKER_MEMORY=<~1.6x data>g.
 # Disk: ~20 GB per finished run in RUNS (checkpoints/ ~7 GB of it). PRUNE_CHECKPOINTS=1 deletes
@@ -58,7 +60,7 @@ fi
 
 # --- inside the tmux session: the loop itself -------------------------------------
 if [ "${_IN_SESSION:-0}" = 1 ]; then
-    eval "$(grep -E '^export (ANTHROPIC_API_KEY|NCBI_API_KEY|WANDB_API_KEY)=' ~/.bashrc || true)"
+    eval "$(grep -E '^export (ANTHROPIC_API_KEY|OPENAI_API_KEY|OPENROUTER_API_KEY|NCBI_API_KEY|WANDB_API_KEY)=' ~/.bashrc || true)"
     export PATH="$HOME/.local/bin:$PATH"
     STOP=0
     trap 'STOP=1' INT          # Ctrl-c reaches the run (it saves and exits); we then stop the loop

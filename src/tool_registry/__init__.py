@@ -169,13 +169,15 @@ def format_tool_for_llm(tool: dict, provider: str = "openai") -> dict:
     
     Args:
         tool: Raw tool definition dict (with required_parameters, optional_parameters).
-        provider: "openai" (or "azure_openai") or "anthropic".
+        provider: "openai" (or "azure_openai"), "openrouter" or "anthropic".
+            OpenRouter takes the OpenAI (Responses-style) definition; the LLM client
+            converts it to chat-completions format.
     
     Returns:
         Tool definition in the provider's expected format.
     """
     provider = provider.lower()
-    if provider in ("openai", "azure_openai"):
+    if provider in ("openai", "azure_openai", "openrouter"):
         return _format_tool_for_openai(tool)
     elif provider == "anthropic":
         return _format_tool_for_anthropic(tool)

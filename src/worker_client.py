@@ -37,6 +37,7 @@ DEFAULT_IMAGE = "ghcr.io/vanallenlab/agentic-sc-runtime:v2"
 
 DEFAULT_ENV_PASSTHROUGH = (
     "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT",
+    "OPENROUTER_API_KEY",
     "SYNAPSE_AUTH_TOKEN", "NCBI_API_KEY", "ENTREZ_EMAIL", "SERPAPI_API_KEY",
     "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
 )
@@ -46,7 +47,7 @@ DEFAULT_ENV_PASSTHROUGH = (
 # code (REPL / terminal) must not be able to call an LLM, e.g. to have another
 # model look at a plot. Harness tools that need them (literature search) get
 # them in memory via the init request; see ToolRuntime._tool_env.
-LLM_SECRET_VARS = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_OPENAI_API_KEY")
+LLM_SECRET_VARS = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "AZURE_OPENAI_API_KEY", "OPENROUTER_API_KEY")
 
 
 class WorkerFatal(Exception):

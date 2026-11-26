@@ -61,21 +61,22 @@ echo "paths OK: data $DATA_MNT, runs $RUNS"
 # --- 2. Free disk space ---------------------------------------------------------
 free_gb() { df -BG --output=avail "$1" | tail -1 | tr -dc 0-9; }
 echo "free: runs disk $(free_gb $RUNS) GB, root disk $(free_gb /) GB"
-[ "$(free_gb $RUNS)" -ge 60 ] || { echo "need >= 60 GB free on the runs disk"; exit 1; }
+MIN_FREE_GB=${MIN_FREE_GB:-60}    # a full-size run can take ~20 GB; lower it for small test inputs
+[ "$(free_gb $RUNS)" -ge "$MIN_FREE_GB" ] || { echo "need >= $MIN_FREE_GB GB free on the runs disk"; exit 1; }
 [ "$(free_gb /)" -ge 5 ] || { echo "need >= 5 GB free on the root disk (W&B cache, logs)"; exit 1; }
 
-# --- 3. Branch, environment, image ----------------------------------------------
-git switch -q harness-hardening
+# --- 3. Code version, environment, image -------------------------------------------
+echo "code: branch $(git branch --show-current), commit $(git rev-parse --short HEAD)$(git diff --quiet HEAD -- src run_agent.py run_agent_htan.py || echo ' + uncommitted changes')"
 export PATH="$HOME/.local/bin:$PATH"
 uv sync --frozen -q
 docker image inspect "$IMAGE" >/dev/null 2>&1 || docker pull "$IMAGE"   # new machine: docker login ghcr.io first
 
 # --- 4. Keys (read from ~/.bashrc, which returns early in non-interactive shells) ----
-eval "$(grep -E '^export (ANTHROPIC_API_KEY|NCBI_API_KEY|WANDB_API_KEY)=' ~/.bashrc || true)"
-code=$(curl -sS -o /dev/null -w "%{http_code}" https://api.anthropic.com/v1/models \
-       -H "x-api-key: ${ANTHROPIC_API_KEY:-}" -H "anthropic-version: 2023-06-01" || true)
-[ "$code" = 200 ] || { echo "Anthropic API key check failed (HTTP $code)"; exit 1; }
-echo "Anthropic key OK"
+# The key the config's llm.provider needs (Anthropic / OpenAI / OpenRouter) is checked against
+# the provider's API, together with the model id. Keys stay in the environment, never on a
+# command line, and are never printed.
+eval "$(grep -E '^export (ANTHROPIC_API_KEY|OPENAI_API_KEY|OPENROUTER_API_KEY|NCBI_API_KEY|WANDB_API_KEY)=' ~/.bashrc || true)"
+uv run python -m src.provider_check "$CONFIG" || exit 1
 [ -n "${NCBI_API_KEY:-}" ] || echo "note: no NCBI_API_KEY in ~/.bashrc -> PubMed/GEO lookups may hit rate limits (HTTP 429)"
 if [ -n "${WANDB_API_KEY:-}" ] || grep -qs api.wandb.ai ~/.netrc; then echo "W&B: logged in"; else echo "W&B: not logged in -> logging disabled"; fi
 
@@ -136,7 +137,7 @@ fi
 tmux has-session -t "$NAME" 2>/dev/null && { echo "tmux session $NAME already exists (tmux attach -t $NAME)"; exit 1; }
 tmux new-session -d -s "$NAME" "bash -c '
   cd $REPO
-  eval \"\$(grep -E \"^export (ANTHROPIC_API_KEY|NCBI_API_KEY|WANDB_API_KEY)=\" ~/.bashrc)\"
+  eval \"\$(grep -E \"^export (ANTHROPIC_API_KEY|OPENAI_API_KEY|OPENROUTER_API_KEY|NCBI_API_KEY|WANDB_API_KEY)=\" ~/.bashrc)\"
   [ -n \"\${WANDB_API_KEY:-}\" ] || grep -qs api.wandb.ai ~/.netrc || export WANDB_MODE=disabled
   export WANDB_DIR=$RUNS/_wandb PATH=\"\$HOME/.local/bin:\$PATH\"
   uv run run_agent_htan.py --config $CONFIG 2>&1 | tee -i $LOG

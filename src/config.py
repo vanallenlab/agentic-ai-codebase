@@ -19,6 +19,9 @@ MODEL_CONTEXT_LIMITS = {
     # Azure OpenAI / OpenAI Responses API
     "gpt-5": 400_000,
     "o4-mini-0416": 128_000,
+    "gpt-6.2-sol": 1_050_000,
+    "gpt-6.1-terra": 1_050_000,
+    # OpenRouter models: limits are read from OpenRouter's catalogue at start-up
     # Anthropic Claude models
     "claude-3-5-sonnet-20241022": 200_000,
     "claude-3-5-haiku-20241022": 200_000,
@@ -41,6 +44,8 @@ MODEL_OUTPUT_LIMITS = {
     # Azure OpenAI / OpenAI
     "gpt-5": 128_000,
     "o4-mini-0416": 16_384,
+    "gpt-6.2-sol": 128_000,
+    "gpt-6.1-terra": 128_000,
     # Anthropic Claude models (all support up to 8K standard, can request higher)
     "claude-3-5-sonnet-20241022": 8192,
     "claude-3-5-haiku-20241022": 8192,
@@ -65,6 +70,13 @@ MODEL_PRICES = {
     "claude-opus-5-5": (4.0, 5.0, 0.20, 20.0),
     "claude-sonnet-4-6": (3.0, 3.75, 0.30, 15.0),
     "claude-sonnet-5-5": (2.0, 2.50, 0.10, 10.0),
+    # OpenAI (standard tier; cache write = 30-minute retention, reported by the API as
+    # input_tokens_details.cache_write_tokens). Prompts above 272k input tokens are billed
+    # at a higher rate, which this estimate ignores (runs stay far below it).
+    # Source: OpenAI's model announcements and OpenRouter's catalogue (checked 2026-11-26).
+    "gpt-6.2-sol": (2.0, 2.50, 0.10, 10.0),
+    "gpt-6.1-terra": (1.0, 1.25, 0.05, 5.0),
+    # OpenRouter models need no entry: each response carries its billed cost.
 }
 
 

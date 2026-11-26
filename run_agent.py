@@ -20,7 +20,7 @@ import weave
 from src.tool_registry import get_tools, list_categories
 from src.config import (load_config, MODEL_CONTEXT_LIMITS, check_leakage_guard,
                         resolve_literature_blacklist)
-from src.llm_client import create_llm_client_from_config, RequestTooLargeError
+from src.llm_client import create_llm_client_from_config, RequestTooLargeError, LLMProviderError
 from src.logging_utils import logger, log
 from src.interactive import interactive_prompt, handle_user_question, prompt_for_continuation
 from src.wandb_utils import log_tokens, finalize, print_summary, log_execution, save_live_files
@@ -292,7 +292,10 @@ def run_agent(config_path: str, user_name: str = None):
     log(f"🤖 LLM Provider: {client.provider} | Model: {model}")
 
     # Initialize state (client lives on state — single place everything flows from)
-    context_limit = MODEL_CONTEXT_LIMITS.get(model)
+    # Known limit: model table first, then what the client learned (OpenRouter catalogue)
+    context_limit = MODEL_CONTEXT_LIMITS.get(model) or getattr(client, "context_window", None)
+    if client.provider == "openrouter":
+        log(f"🔀 OpenRouter routing: {client.openrouter_routing}")
     if context_limit is None:
         if client.provider == "anthropic":
             context_limit = 200_000
@@ -316,6 +319,9 @@ def run_agent(config_path: str, user_name: str = None):
     state.tool_output_max_chars = config.get("tool_output_max_chars", DEFAULT_TOOL_OUTPUT_MAX_CHARS) or None
     state.track_data_changes = config.get("track_data_changes", True)
     state.image_max_edge = int(config.get("image_max_edge") or model_max_image_edge(model))
+    if config.get("send_images", True) and getattr(client, "accepts_images", None) is False:
+        log(f"🖼️ {model} does not accept images: plots are saved but not sent (send_images -> false)")
+        config["send_images"] = False
     state.send_images = bool(config.get("send_images", True))
     if not state.send_images:
         log("🖼️ send_images: false - plots are saved but never shown to the model")
@@ -413,6 +419,7 @@ def run_agent(config_path: str, user_name: str = None):
             errs.append(openai.APIError)
         except ImportError:
             pass
+        errs.append(LLMProviderError)
         return tuple(errs)
 
     api_errors = _api_error_types()
@@ -429,7 +436,8 @@ def run_agent(config_path: str, user_name: str = None):
             turn += 1
             state.recorder.request(turn, messages)
 
-            log(f"🔗 Calling {state.client.provider} API (previous_response_id: {state.previous_response_id})")
+            log(f"🔗 Calling {state.client.provider} API" + (
+                f" (previous_response_id: {state.previous_response_id})" if state.client.keeps_server_state else ""))
             try:
                 response = state.client.create(
                     messages=messages,
@@ -437,7 +445,7 @@ def run_agent(config_path: str, user_name: str = None):
                     reasoning_effort=reasoning_effort,
                     store=True,
                     parallel_tool_calls=False,
-                    previous_response_id=state.previous_response_id,
+                    previous_response_id=state.previous_response_id if state.client.keeps_server_state else None,
                 )
             except RequestTooLargeError as e:
                 log(f"\n🛑 {e}")

@@ -57,7 +57,20 @@ logging:
   entity: my-wandb-entity
 ```
 
-**Env:** set `ANTHROPIC_API_KEY`. For W&B logging also set `WANDB_API_KEY`.
+**Env:** set the key of the model provider. For W&B logging also set `WANDB_API_KEY`.
+
+### Model providers
+
+| `llm.provider` | Models | Key | Notes |
+|---|---|---|---|
+| `anthropic` | Claude | `ANTHROPIC_API_KEY` | explicit prompt caching + keep-alive pings during long tools |
+| `openai` | GPT | `OPENAI_API_KEY` | Responses API; `store: false` keeps the conversation locally (nothing stored at OpenAI) |
+| `openrouter` | open-weight models (Qwen, Muse, ...) | `OPENROUTER_API_KEY` | chat completions; host routing pinned per model; billed cost read from each response |
+| `azure_openai` | GPT on Azure | `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT` | |
+
+The agent loop, tools, worker and leakage guard are the same for all of them.
+`python scripts/make_model_configs.py --provider <p> --model <id>` writes the 95 HTAN configs
+for a model (config/htan/<model>/); `MODEL_DIR=<model> bash scripts/htan/machine_<N>.sh` runs them.
 
 ### Harness robustness options (all optional)
 
@@ -81,6 +94,11 @@ llm:
   retry_total_seconds: 1800     # additional backoff window for transient API errors
   max_images_per_request: 600   # stop cleanly (everything saved) instead of sending a request the API rejects
   prompt_caching: true          # Anthropic: cache the conversation prefix (cuts input cost ~80%; outputs unchanged)
+  cache_keepalive_minutes: 30   # Anthropic: keep the cache alive through long tool calls (0 = off)
+  store: true                   # OpenAI: true = conversation kept at OpenAI; false = kept locally, nothing stored
+  reasoning_summary: auto       # OpenAI: reasoning summaries in the step logs
+  routing: {}                   # OpenRouter `provider` object (order/only/allow_fallbacks/...); defaults:
+                                # require_parameters: true, data_collection: deny
 logging:
   required: false               # if true, a wandb init failure aborts the run
 ```
@@ -128,7 +146,8 @@ Every run writes, as it goes: `agent.log`, `steps.jsonl` (every tool execution i
 - `run_agent.py` — main entry point (HAI / interactive experiments)
 - `run_agent_htan.py` — entry point for HTAN batch experiments (adds cNMF data loading)
 - `src/` — agent loop, LLM client, tool registry, hooks, observability (W&B, Weave)
-- `config/` — YAML configs (`hai/` for HAI datasets, `htan/opus-5-5/` for HTAN cancer types; `htan/opus-4-6/` is the older Opus 4.6 set)
+- `config/` — YAML configs (`hai/` for HAI datasets, `htan/<model>/` for HTAN cancer types: `opus-5-5`, `gpt-6-2-sol`,
+  `gpt-6-1-terra`, `qwen3-8-27b`, `muse-spark-open`; `htan/opus-4-6/` is the older Opus 4.6 set and the source of the others)
 - `tasks/` — task prompt files (`.md` / `.txt`) referenced by configs
 - `data/` — input datasets (see `data/README.md` for expected structure)
 - `output/` — agent run results (see `output/README.md` for structure)

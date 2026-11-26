@@ -323,6 +323,9 @@ def parse_response(response, state) -> tuple[list, str]:
             
             elif item.type == "reasoning":
                 summary = getattr(item, "summary", None)
+                if isinstance(summary, (list, tuple)):   # OpenAI: list of summary parts
+                    summary = "\n".join(getattr(p, "text", None) or (p.get("text", "") if isinstance(p, dict) else str(p))
+                                        for p in summary).strip()
                 if summary:
                     thoughts.append(str(summary))
                     state.add_reasoning(summary)
