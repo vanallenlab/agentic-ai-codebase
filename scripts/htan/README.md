@@ -29,6 +29,25 @@ The big cohorts get fewer tasks because each of their steps is slower.
 5. `DRY_RUN=1 bash scripts/htan/machine_<N>.sh`, then `bash scripts/htan/machine_<N>.sh`.
 6. Watch: `tmux ls`, `tmux attach -t htan_<cohort>`; finished tasks: `ls output/*/*/*/DONE`.
 
+## Results to a bucket (so the machine disks never fill up)
+
+A full-size run is ~13-30 GB, so seven models do not fit on a 550 GB disk. With `UPLOAD_TO` set,
+each run folder is uploaded to Cloud Storage as soon as its task ends (done, failed or stopped) and
+deleted locally once the upload is verified (same files and bytes in the bucket). If an upload fails,
+the local copy is kept and the runs go on. Pointer files and DONE markers stay on the machine, so
+finished tasks are still skipped.
+
+1. Once, from your computer: `gcloud storage buckets create gs://<bucket> --location us-central1`
+   (same region as the VMs, so the uploads are free and fast).
+2. On each machine: `echo 'export UPLOAD_TO=gs://<bucket>/htan' >> ~/.bashrc`.
+3. Upload the runs already on the machine (the Opus 5.5 ones) and free their space:
+   `DRY_RUN=1 bash scripts/htan/upload_runs.sh` to list them, then `bash scripts/htan/upload_runs.sh`.
+4. `DRY_RUN=1 bash scripts/htan/machine_<N>.sh` now also checks that the bucket is writable.
+
+Layout in the bucket: `agent-runs/<run id>/` (the run folders) and `output/<model>/<cohort>/<task>/`
+(pointer files naming each run id). Get everything back with
+`gcloud storage rsync -r gs://<bucket>/htan/agent-runs ~/agent-runs` (and `.../output output`).
+
 Options (environment variables before the command):
 - `MODELS="gpt-6-1-terra glm-5-3-flash"` runs only those sets, in that order (default: all of them;
   make more with `scripts/make_model_configs.py`).
@@ -38,6 +57,6 @@ Options (environment variables before the command):
 - A model whose key / model check fails is skipped and the next model runs; the pre-flight needs
   `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `OPENROUTER_API_KEY` in `~/.bashrc`.
 
-Results stay on each machine (`output/<model>/<cohort>/` pointer files and the run folders in `~/agent-runs`);
+Without `UPLOAD_TO`, results stay on each machine (`output/<model>/<cohort>/` pointer files and the run folders in `~/agent-runs`);
 copy both back, e.g. `rsync -a vm:agentic-ai-codebase/output/ output/` and
 `rsync -a vm:agent-runs/ ~/agent-runs/` (run folder ids are random, so they do not collide).
