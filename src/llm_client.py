@@ -87,6 +87,22 @@ _THINKING_DEFAULT_ON_MARKERS = ("opus-5", "sonnet-5", "haiku-5", "fable", "mytho
 _THINKING_NOT_DISABLEABLE_MARKERS = ("opus-5-5", "sonnet-5-5", "fable", "mythos")
 
 
+# Anthropic: a refusal before any output is billed only in these stop_details categories
+# (platform.claude.com/docs/en/build-with-claude/refusals-and-fallback, "as of September 2026").
+BILLED_PRE_OUTPUT_REFUSALS = {"bio", "frontier_llm", "reasoning_extraction"}
+
+
+def _anthropic_unbilled_refusal(response) -> bool:
+    """True for a pre-output refusal in a category Anthropic does not bill."""
+    if getattr(response, "stop_reason", None) != "refusal":
+        return False
+    if (getattr(getattr(response, "usage", None), "output_tokens", 0) or 0) > 0:
+        return False   # mid-stream refusal: input and streamed output are billed
+    details = getattr(response, "stop_details", None)
+    category = details.get("category") if isinstance(details, dict) else getattr(details, "category", None)
+    return category not in BILLED_PRE_OUTPUT_REFUSALS
+
+
 def _details(**fields):
     """Small attribute object for usage details (read with getattr by TokenTracker)."""
     return type("Details", (), dict(fields))()
@@ -737,6 +753,8 @@ class LLMClient:
         usage.input_tokens_details = type('Details', (), {
             'cached_tokens': cache_read, 'cache_write_tokens': cache_write,
             'uncached_tokens': uncached})()
+        if _anthropic_unbilled_refusal(response):
+            usage.cost_usd = 0.0
         
         return LLMResponse(
             id=response.id, provider="anthropic",
@@ -791,6 +809,8 @@ class LLMClient:
                                          getattr(it, "cache_creation_input_tokens", 0) or 0,
                                          getattr(it, "cache_read_input_tokens", 0) or 0,
                                          getattr(it, "output_tokens", 0) or 0) for it in iterations)
+        if cost is None and _anthropic_unbilled_refusal(response):
+            cost = 0.0
         usage = UsageInfo(input_tokens=(u.input_tokens or 0) + cache_read + cache_write,
                           output_tokens=u.output_tokens,
                           input_tokens_details=_details(cached_tokens=cache_read, cache_write_tokens=cache_write,

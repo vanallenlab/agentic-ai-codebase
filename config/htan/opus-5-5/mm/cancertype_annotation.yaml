@@ -20,7 +20,6 @@ llm:
   effort: medium
   thinking_display: summarized
   cache_keepalive_minutes: 30   # keep the prompt cache alive through tool calls up to 30 min
-  telemetry_fallback_model: claude-opus-4-8   # answers the telemetry step when the model's classifier declines it (server-side refusal fallback)
 logging:
   enabled: true
   project: agentic-ai-htan-v2

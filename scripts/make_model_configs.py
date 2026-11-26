@@ -15,8 +15,7 @@ Writes config/htan/<dir>/<cohort>/<task>.yaml with output_base_dir output/<dir>/
 so `MODEL_DIR=<dir> bash scripts/htan/machine_<N>.sh` runs the set.
 
 Per provider (the settings the harness supports are documented in src/llm_client.py):
-  anthropic   prompt caching + keep-alive pings (30 min), effort medium, summarized thinking,
-              telemetry step answered by Claude Opus 4.8 when the model's classifier declines it
+  anthropic   prompt caching + keep-alive pings (30 min), effort medium, summarized thinking
   openai      store: false (the conversation is kept locally and nothing is stored at OpenAI;
               billed tokens are the same), reasoning summaries, caching is automatic
   openrouter  routing pinned to up to 3 hosts, picked from OpenRouter's endpoint list:
@@ -45,9 +44,6 @@ MAKER_HOST = {"qwen": "alibaba", "meta": "meta", "meta-llama": "meta", "mistrala
               "deepseek": "deepseek", "google": "google-ai-studio", "moonshotai": "moonshotai",
               "z-ai": "z-ai", "minimax": "minimax"}
 LOW_PRECISION = {"fp4", "int4", "fp6", "int6"}
-# Claude model that writes the telemetry step's fields when the run's model declines that
-# request (Opus 5.5's classifier refuses it as reasoning extraction; no default fallback exists)
-TELEMETRY_FALLBACK = "claude-opus-4-8"
 
 
 def default_dir(model: str) -> str:
@@ -111,9 +107,7 @@ def llm_block(provider: str, model: str, routing: dict | None) -> str:
         lines += ["  prompt_caching: true", f"  max_tokens: {MAX_TOKENS}", "  effort: medium",
                   "  thinking_display: summarized",
                   "  cache_keepalive_minutes: 30   # keep the prompt cache alive through tool calls up to 30 min"]
-        if model != TELEMETRY_FALLBACK:
-            lines += [f"  telemetry_fallback_model: {TELEMETRY_FALLBACK}   # answers the telemetry step when the "
-                      "model's classifier declines it (server-side refusal fallback)"]
+
     elif provider == "openai":
         lines += [f"  max_tokens: {MAX_TOKENS}",
                   "  store: false                 # conversation kept locally; nothing stored at OpenAI",
