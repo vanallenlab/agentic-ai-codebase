@@ -70,7 +70,7 @@ logging:
 
 The agent loop, tools, worker and leakage guard are the same for all of them.
 `python scripts/make_model_configs.py --provider <p> --model <id>` writes the 95 HTAN configs
-for a model (config/htan/<model>/); `MODEL_DIR=<model> bash scripts/htan/machine_<N>.sh` runs them.
+for a model (config/htan/<model>/); `bash scripts/htan/machine_<N>.sh` runs every set (`MODELS=<model>` for one).
 
 ### Harness robustness options (all optional)
 

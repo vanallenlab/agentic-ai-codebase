@@ -1,7 +1,10 @@
 # Running the HTAN cohorts on several machines
 
 Each `machine_<N>.sh` starts two cohorts at once (each cohort: its tasks one after another, in
-tmux session `htan_<cohort>`). All five are sized for a **16 vCPU / 128 GB** VM (e.g. n2-highmem-16).
+tmux session `htan_<cohort>`), and each session works through every model set in turn:
+opus-5-5, gpt-6-1-terra, glm-5-3-flash, muse-spark-open, muse-glimmer-30b, gpt-6-2-sol, kimi-k3-1-pro.
+Finished tasks (`output/<model>/<cohort>/<task>/DONE`) are skipped, so the same command resumes
+after a stop, a crash or a reboot. All five are sized for a **16 vCPU / 128 GB** VM (e.g. n2-highmem-16).
 
 | Machine | Cohorts (tasks) | Worker memory caps | Data loaded |
 |---|---|---|---|
@@ -24,15 +27,17 @@ The big cohorts get fewer tasks because each of their steps is slower.
 4. `bash scripts/htan/setup_machine.sh /dev/disk/by-id/google-htan-datasets`
    (installs docker/tmux/uv if missing, mounts the data disk ro at `~/htan-disk-mt`, pulls the image).
 5. `DRY_RUN=1 bash scripts/htan/machine_<N>.sh`, then `bash scripts/htan/machine_<N>.sh`.
-6. Watch: `tmux ls`, `tmux attach -t htan_<cohort>`; finished tasks: `ls output/opus-5-5/*/*/DONE`.
+6. Watch: `tmux ls`, `tmux attach -t htan_<cohort>`; finished tasks: `ls output/*/*/*/DONE`.
 
-Other models: `MODEL_DIR=<set> bash scripts/htan/machine_<N>.sh` with a set from `config/htan/`
-(`gpt-6-2-sol`, `gpt-6-1-terra`, `muse-spark-open`, `muse-glimmer-30b`, `kimi-k3-1-pro`,
-`glm-5-3-flash`, or one made with
-`scripts/make_model_configs.py`). The pre-flight checks the matching key (`OPENAI_API_KEY`,
-`OPENROUTER_API_KEY`) in `~/.bashrc`. Results go to `output/<set>/`.
-   Re-running the machine script skips finished tasks and retries failed ones.
+Options (environment variables before the command):
+- `MODELS="gpt-6-1-terra glm-5-3-flash"` runs only those sets, in that order (default: all of them;
+  make more with `scripts/make_model_configs.py`).
+- `PRUNE_CHECKPOINTS=0` keeps each run's `checkpoints/` (~7 GB); the machine scripts delete it by default.
+- `MIN_FREE_GB=60` (default): a session stops before a task when the runs disk has less free space;
+  free space (or grow the disk) and run the machine script again.
+- A model whose key / model check fails is skipped and the next model runs; the pre-flight needs
+  `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `OPENROUTER_API_KEY` in `~/.bashrc`.
 
-Results stay on each machine (`output/opus-5-5/<cohort>/` pointer files and the run folders in `~/agent-runs`);
-copy both back, e.g. `rsync -a vm:agentic-ai-codebase/output/opus-5-5/ output/opus-5-5/` and
+Results stay on each machine (`output/<model>/<cohort>/` pointer files and the run folders in `~/agent-runs`);
+copy both back, e.g. `rsync -a vm:agentic-ai-codebase/output/ output/` and
 `rsync -a vm:agent-runs/ ~/agent-runs/` (run folder ids are random, so they do not collide).
