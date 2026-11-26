@@ -19,7 +19,7 @@ Per provider (the settings the harness supports are documented in src/llm_client
   openai      store: false (the conversation is kept locally and nothing is stored at OpenAI;
               billed tokens are the same), reasoning summaries, caching is automatic
   openrouter  routing pinned to up to 3 hosts, picked from OpenRouter's endpoint list:
-              hosts that support tools (and reasoning), not 4-bit quantized, the model maker's
+              hosts that support tools (and reasoning), not 4-bit quantized (except the maker's own), the model maker's
               own host first, then by uptime and price; fallbacks stay within that list, so
               the prompt cache and the model's behaviour stay consistent within a run.
               Models without image input get send_images: false.
@@ -43,7 +43,8 @@ MAX_TOKENS = 64000
 MAKER_HOST = {"qwen": "alibaba", "meta": "meta", "meta-llama": "meta", "mistralai": "mistral",
               "deepseek": "deepseek", "google": "google-ai-studio", "moonshotai": "moonshotai",
               "z-ai": "z-ai", "minimax": "minimax"}
-LOW_PRECISION = {"fp4", "int4", "fp6", "int6"}
+LOW_PRECISION = {"fp4", "int4", "fp6", "int6", "mxfp4", "nvfp4"}
+PREMIUM_OR_SPOT = {"fast", "highspeed", "prime", "flex", "spot", "turbo"}
 
 
 def default_dir(model: str) -> str:
@@ -72,18 +73,24 @@ def openrouter_settings(model: str) -> tuple[dict, bool, list[str]]:
     wants_reasoning = "reasoning" in params
     images = "image" in ((entry.get("architecture") or {}).get("input_modalities") or [])
     eps = _openrouter(f"/models/{model}/endpoints")["data"]["endpoints"]
+    maker = MAKER_HOST.get(model.split("/")[0])
     usable = []
     for ep in eps:
         sp = set(ep.get("supported_parameters") or [])
         if "tools" not in sp or (wants_reasoning and "reasoning" not in sp):
             continue
-        if (ep.get("quantization") or "").lower() in LOW_PRECISION or ep.get("status", 0) not in (0, None):
+        tag_parts = set((ep.get("tag") or "").split("/")[1:])
+        if tag_parts & PREMIUM_OR_SPOT:   # faster-but-pricier or pre-emptible variants
+            continue
+        from_maker = maker is not None and (ep.get("tag") or "").split("/")[0] == maker
+        # 4-bit hosts are skipped, except the model maker's own (its release precision)
+        if ((ep.get("quantization") or "").lower() in LOW_PRECISION and not from_maker) \
+                or ep.get("status", 0) not in (0, None):
             continue
         usable.append(ep)
     if not usable:
         sys.exit(f"no OpenRouter host serves {model} with tools{' + reasoning' if wants_reasoning else ''} "
                  "at 8-bit precision or better")
-    maker = MAKER_HOST.get(model.split("/")[0])
     price = lambda ep: float((ep.get("pricing") or {}).get("prompt") or 0) + float((ep.get("pricing") or {}).get("completion") or 0)
     usable.sort(key=lambda ep: (
         0 if maker and (ep.get("tag") or "").split("/")[0] == maker else 1,
